@@ -6,15 +6,15 @@
     <title>M.E Search</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#050505">
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         :root { --bg: #050505; --text: #e0e0e0; --neon: #00ffcc; --border: rgba(0, 255, 204, 0.2); --glass: rgba(15, 20, 30, 0.8); }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Cairo', sans-serif; -webkit-tap-highlight-color: transparent; }
-        body { background: var(--bg); color: var(--text); display: flex; flex-direction: column; height: 100dvh; background-image: radial-gradient(circle at 15% 15%, rgba(0,255,204,0.05) 0%, transparent 40%), radial-gradient(circle at 85% 85%, rgba(0,255,204,0.05) 0%, transparent 40%); }
+        body { background: var(--bg); color: var(--text); display: flex; flex-direction: column; height: 100dvh; }
         
         .header { display: flex; align-items: center; justify-content: space-between; padding: 15px 20px; background: rgba(5,5,10,0.9); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; backdrop-filter: blur(10px);}
-        .header-title .main { font-size: 22px; font-weight: 900; background: linear-gradient(90deg, #fff, var(--neon)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .header-title .main { font-size: 20px; font-weight: 900; background: linear-gradient(90deg, #fff, var(--neon)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         
         .chat-wrapper { flex: 1; overflow-y: auto; padding-bottom: 100px; }
         .chat-container { width: 100%; max-width: 820px; margin: 0 auto; padding: 20px; display: flex; flex-direction: column; gap: 20px; }
@@ -32,19 +32,20 @@
         .message-content ul { padding-right: 20px; margin: 10px 0; }
         .message-content li { margin-bottom: 8px; color: #ccc; }
         .message-content p { margin-bottom: 10px; }
+        .message-content img { max-width: 100%; border-radius: 10px; margin-top: 10px; border: 1px solid var(--border); }
         
         .link-btn { display: flex; align-items: center; justify-content: space-between; background: rgba(0,255,204,0.1); border: 1px solid var(--neon); color: var(--neon); padding: 10px 15px; border-radius: 10px; text-decoration: none; font-size: 13px; margin: 8px 0; word-break: break-all; transition: 0.3s; }
-        
-        .copy-btn { background: transparent; border: 1px solid var(--neon); color: var(--neon); padding: 6px 15px; border-radius: 20px; font-size: 12px; cursor: pointer; margin-top: 10px; align-self: flex-end; transition: 0.3s; display: flex; align-items: center; gap: 5px;}
-        
-        /* تنسيق الكود */
-        pre { background: #000 !important; border: 1px solid #333; border-radius: 8px; padding: 15px; overflow-x: auto; margin: 10px 0; }
-        code { color: var(--neon) !important; font-family: monospace !important; font-size: 14px !important; direction: ltr; display: block; text-align: left;}
+        .link-btn:hover { background: var(--neon); color: #000; }
 
         .input-container { position: fixed; bottom: 0; left: 0; right: 0; padding: 15px; background: linear-gradient(180deg, transparent, #000 80%); display: flex; justify-content: center; z-index: 100;}
-        .input-box-wrapper { width: 100%; max-width: 820px; display: flex; align-items: center; gap: 8px; background: rgba(20, 25, 35, 0.95); border-radius: 15px; padding: 5px; border: 1px solid var(--border); }
+        .input-box-wrapper { width: 100%; max-width: 820px; display: flex; align-items: center; gap: 8px; background: rgba(20, 25, 35, 0.95); border-radius: 15px; padding: 5px 10px; border: 1px solid var(--border); }
         input[type="text"] { flex: 1; background: transparent; border: none; color: #fff; font-size: 15px; padding: 12px; outline: none; }
-        .send-btn { background: var(--neon); color: #000; border: none; width: 45px; height: 45px; border-radius: 12px; font-size: 20px; font-weight: bold; }
+        
+        /* أزرار المايك والإرسال */
+        .icon-btn { background: transparent; border: none; color: #888; font-size: 22px; cursor: pointer; padding: 5px; transition: 0.3s; }
+        .icon-btn.active { color: #ff4444; animation: pulse 1s infinite; }
+        .send-btn { background: var(--neon); color: #000; border: none; width: 40px; height: 40px; border-radius: 50%; font-size: 18px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center;}
+        .speak-btn { background: transparent; border: 1px solid var(--border); color: var(--neon); width: 35px; height: 35px; border-radius: 50%; font-size: 16px; cursor: pointer; margin-top: 10px; align-self: flex-end; display: flex; align-items: center; justify-content: center;}
 
         #update-toast { position: fixed; top: -100px; left: 50%; transform: translateX(-50%); background: var(--neon); color: #000; padding: 12px 20px; border-radius: 0 0 15px 15px; font-weight: bold; z-index: 9999; transition: top 0.5s ease; display: flex; align-items: center; gap: 10px; }
         #update-toast.show { top: 0; }
@@ -54,7 +55,7 @@
     <div id="update-toast"><span>🚀 يوجد تحديث!</span><button onclick="applyUpdate()">تحديث</button></div>
     
     <div class="header">
-        <div class="header-title"><div class="main">M.E SEARCH</div></div>
+        <div class="header-title"><div class="main">M.E ASSISTANT</div></div>
         <button onclick="newChat()" style="background:transparent; border:1px solid var(--neon); color:var(--neon); padding:6px 12px; border-radius:10px; font-size:13px;">+ NEW</button>
     </div>
     
@@ -64,18 +65,21 @@
     
     <div class="input-container">
         <div class="input-box-wrapper">
-            <input type="text" id="prompt" placeholder="ابحث عن كود أو معلومة..." onkeypress="if(event.key === 'Enter') askAI()">
+            <button class="icon-btn" id="mic-btn" onclick="startDictation()">🎤</button>
+            <input type="text" id="prompt" placeholder="اسأل عن أي حاجة أو اطلب صورة..." onkeypress="if(event.key === 'Enter') askAI()">
             <button class="send-btn" onclick="askAI()">↑</button>
         </div>
     </div>
 
     <script>
+        // تخصيص شكل اللينكات
         const renderer = new marked.Renderer();
         renderer.link = function(href, title, text) {
             return `<a href="${href}" target="_blank" class="link-btn">🔗 ${text} <span>↗</span></a>`;
         };
         marked.setOptions({ renderer: renderer, breaks: true });
 
+        // خدمة العامل (للتحديث التلقائي)
         let newWorker;
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('sw.js').then(reg => {
@@ -97,61 +101,69 @@
             const container = document.getElementById('chat-container');
             container.innerHTML = '';
             if(chatHistory.length === 0) {
-                container.innerHTML = `<div class="message-row ai"><div class="message-content">مرحباً يا محمد 👋<br>أنا محرك البحث الخاص بك. اطلب أي كود أو معلومة.</div></div>`;
+                container.innerHTML = `<div class="message-row ai"><div class="message-content">أهلاً بك يا محمد 👋<br>أنا مساعدك الشخصي. يمكنني البحث، إحضار الصور، والتحدث معك. جرب تقولي "ارسم قطة" أو اسألني أي سؤال!</div></div>`;
             }
             chatHistory.forEach((msg, index) => {
                 let htmlContent = marked.parse(msg.content);
-                // زرار النسخ بيظهر بس لو الرد من الذكاء
-                let copyBtn = msg.role === 'ai' ? `<button class="copy-btn" onclick="copySmart(${index})">📋 نسخ</button>` : '';
+                let speakBtn = msg.role === 'ai' ? `<button class="speak-btn" onclick="speakText('${msg.content.replace(/'/g, "\\'")}')">🔊</button>` : '';
                 
                 container.innerHTML += `
                     <div class="message-row ${msg.role === 'user' ? 'user' : 'ai'}">
                         <div class="message-content" id="msg-${index}">${htmlContent}</div>
-                        ${copyBtn}
+                        ${speakBtn}
                     </div>`;
             });
             document.getElementById('chat-wrapper').scrollTop = document.getElementById('chat-wrapper').scrollHeight;
         }
         loadHistory();
 
-        // 🚨 زرار النسخ الذكي 🚨
-        function copySmart(index) {
-            const rawContent = chatHistory[index].content;
-            
-            // 1. لو فيه كود، ننسخ الكود بس
-            const codeRegex = /```(?:[a-z]+)?\n([\s\S]*?)```/g;
-            let match;
-            let codes = [];
-            while ((match = codeRegex.exec(rawContent)) !== null) {
-                codes.push(match[1].trim());
-            }
-            
-            if (codes.length > 0) {
-                navigator.clipboard.writeText(codes.join('\n\n')).then(() => {
-                    alert('تم نسخ الكود فقط! 💻');
-                });
-            } else {
-                // 2. لو مفيش كود، ننسخ الكلام المفيد بس ونشيل العناوين والكلام الزيادة
-                let cleanText = rawContent
-                    .replace(/###.*?\n/g, '') // شيل العناوين
-                    .replace(/\*\*.*?\*\*/g, '') // شيل العريض
-                    .replace(/- \[(.*?)\]\(.*?\)/g, '') // شيل لينكات المصادر
-                    .replace(/📖.*?\n/g, '')
-                    .replace(/📌.*?\n/g, '')
-                    .replace(/🔗.*?\n/g, '')
-                    .replace(/^-\s/gm, '') // شيل النقط
-                    .trim();
-                    
-                if(!cleanText) cleanText = rawContent; // لو فاضي يرجع الأصل
+        function newChat() { chatHistory = []; localStorage.removeItem('m.e_history'); loadHistory(); }
+
+        // 🚨 1. ميزة المايك (الاستماع للمستخدم) 🚨
+        function startDictation() {
+            if (window.hasOwnProperty('webkitSpeechRecognition')) {
+                var recognition = new webkitSpeechRecognition();
+                recognition.continuous = false;
+                recognition.interimResults = false;
+                recognition.lang = "ar-EG"; // اللهجة المصرية
                 
-                navigator.clipboard.writeText(cleanText).then(() => {
-                    alert('تم نسخ المعلومات فقط! 📝');
-                });
+                recognition.start();
+                document.getElementById('mic-btn').classList.add('active');
+
+                recognition.onresult = function(e) {
+                    document.getElementById('prompt').value = e.results[0][0].transcript;
+                    recognition.stop();
+                    document.getElementById('mic-btn').classList.remove('active');
+                    askAI(); // يبعت السؤال أوتوماتيك
+                };
+                recognition.onerror = function(e) {
+                    document.getElementById('mic-btn').classList.remove('active');
+                };
+                recognition.onend = function(e) {
+                    document.getElementById('mic-btn').classList.remove('active');
+                };
+            } else {
+                alert('متصفحك مش بيدعم المايك.');
             }
         }
 
-        function newChat() { chatHistory = []; localStorage.removeItem('m.e_history'); loadHistory(); }
+        // 🚨 2. ميزة التحدث (قراءة الردود) 🚨
+        function speakText(text) {
+            // بنشيل الرموز واللينكات عشان يقرا الكلام بس
+            let cleanText = text.replace(/[*#_`\-]/g, '').replace(/\[.*?\]\(.*?\)/g, '').replace(/https?:\/\/[^\s]+/g, '');
+            
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel(); // قفل أي كلام قديم
+                var msg = new SpeechSynthesisUtterance(cleanText);
+                msg.lang = 'ar-EG';
+                msg.rate = 1.0; // السرعة
+                window.speechSynthesis.speak(msg);
+            } else {
+                alert('متصفحك مش بيدعم قراءة النصوص.');
+            }
+        }
 
+        // دالة الكتابة السريعة
         async function typeWriter(element, text, speed = 10) {
             element.innerHTML = '';
             const lines = text.split('\n');
@@ -170,13 +182,16 @@
             const prompt = promptInput.value.trim();
             if(!prompt) return;
 
+            // إيقاف أي صوت شغال
+            if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+
             const chatContainer = document.getElementById('chat-container');
             chatContainer.innerHTML += `<div class="message-row user"><div class="message-content">${prompt}</div></div>`;
             promptInput.value = '';
             document.getElementById('chat-wrapper').scrollTop = document.getElementById('chat-wrapper').scrollHeight;
 
             const loadingId = 'loading-' + Date.now();
-            chatContainer.innerHTML += `<div class="message-row ai" id="${loadingId}"><div class="message-content">⏳ جاري البحث...</div></div>`;
+            chatContainer.innerHTML += `<div class="message-row ai" id="${loadingId}"><div class="message-content">⏳ جاري التفكير والبحث...</div></div>`;
             document.getElementById('chat-wrapper').scrollTop = document.getElementById('chat-wrapper').scrollHeight;
 
             try {
@@ -192,7 +207,7 @@
                 chatContainer.innerHTML += `
                     <div class="message-row ai">
                         <div class="message-content" id="${aiMsgId}"></div>
-                        <button class="copy-btn" onclick="copySmart(${chatHistory.length - 1})">📋 نسخ</button>
+                        <button class="speak-btn" onclick="speakText('${data.final.replace(/'/g, "\\'")}')">🔊</button>
                     </div>`;
                 
                 await typeWriter(document.getElementById(aiMsgId), data.final, 10);
