@@ -27,15 +27,11 @@ async function pureSearch(query) {
             let href = $(el).attr('href');
             let title = $(el).text().trim();
             if (href && href.includes('uddg=')) {
-                try {
-                    href = decodeURIComponent(href.split('uddg=')[1].split('&')[0]);
-                } catch(e) {}
+                try { href = decodeURIComponent(href.split('uddg=')[1].split('&')[0]); } catch(e) {}
             }
             if (href && href.startsWith('http')) links.push({ title, url: href });
         });
-        
         results.topSites = links;
-
     } catch (e) {}
     
     try {
@@ -52,20 +48,15 @@ app.post('/ask', async (req, res) => {
     if (!prompt) return res.status(400).json({ error: "مفيش سؤال!" });
     
     const searchData = await pureSearch(prompt);
-    
-    // تنسيق Markdown احترافي
     let finalAnswer = `### 🌐 نتائج البحث عن: ${prompt}\n\n`;
     
-    if (searchData.wiki) {
-        finalAnswer += `**📖 من ويكيبيديا:**\n${searchData.wiki}\n\n`;
-    }
+    if (searchData.wiki) finalAnswer += `**📖 من ويكيبيديا:**\n${searchData.wiki}\n\n`;
     
     if (searchData.snippets.length > 0) {
         finalAnswer += `**📌 معلومات من الويب:**\n\n`;
-        searchData.snippets.forEach((snip, index) => {
-            finalAnswer += `- ${snip}\n`;
+        searchData.snippets.forEach((snip) => {
+            finalAnswer += `- ${snip}\n\n`;
         });
-        finalAnswer += `\n`;
     }
     
     if (searchData.topSites.length > 0) {
