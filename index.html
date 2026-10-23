@@ -12,7 +12,6 @@
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Cairo', sans-serif; -webkit-tap-highlight-color: transparent; }
         body { background: var(--bg); color: var(--text); display: flex; flex-direction: column; height: 100dvh; overflow: hidden;}
         
-        /* الهيدر */
         .header { display: flex; align-items: center; justify-content: space-between; padding: 15px 20px; background: rgba(5,5,10,0.9); border-bottom: 1px solid var(--border); z-index: 100; backdrop-filter: blur(10px);}
         .header-title .main { font-size: 20px; font-weight: 900; background: linear-gradient(90deg, #fff, var(--neon)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         .action-btn { background: transparent; border: 1px solid var(--border); color: var(--neon); padding: 8px 12px; border-radius: 10px; font-size: 14px; cursor: pointer; }
@@ -42,15 +41,34 @@
         .message-content { font-size: 15px; line-height: 1.8; padding: 15px 20px; border-radius: 16px; max-width: 95%; word-wrap: break-word; background: var(--glass); border: 1px solid var(--border); backdrop-filter: blur(10px); }
         .message-row.user .message-content { background: rgba(0,255,204,0.15); border-color: var(--neon); color: #fff; }
         
+        /* تنسيق النصوص */
         .message-content h3 { color: var(--neon); margin: 15px 0 10px; font-size: 18px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
         .message-content strong { color: #fff; font-weight: 700; }
         .message-content ul { padding-right: 20px; margin: 10px 0; }
         .message-content li { margin-bottom: 8px; color: #ccc; }
         .message-content p { margin-bottom: 10px; }
         .message-content img { max-width: 100%; border-radius: 10px; margin-top: 10px; border: 1px solid var(--border); }
-        .message-content a { display: inline-block; background: rgba(0,255,204,0.1); border: 1px solid var(--neon); color: var(--neon); padding: 8px 12px; border-radius: 8px; text-decoration: none; font-size: 13px; margin: 5px 0; word-break: break-all; }
+        
+        /* 🚨 تنسيق مربع اللينك والنسخ 🚨 */
+        .link-box {
+            display: flex; align-items: center; justify-content: space-between;
+            background: #0a0a0f; border: 1px solid var(--border);
+            border-radius: 10px; padding: 8px 12px; margin: 10px 0; gap: 10px;
+            box-shadow: 0 0 10px rgba(0, 255, 204, 0.05);
+        }
+        .link-text {
+            color: var(--neon); text-decoration: none; font-size: 13px;
+            word-break: break-all; flex: 1; display: flex; align-items: center; gap: 5px;
+        }
+        .copy-link-btn {
+            background: rgba(0, 255, 204, 0.1); border: 1px solid var(--neon);
+            color: var(--neon); padding: 5px 10px; border-radius: 8px;
+            font-size: 12px; font-weight: bold; cursor: pointer;
+            display: flex; align-items: center; gap: 5px; font-family: 'Cairo', sans-serif;
+            transition: 0.2s; white-space: nowrap;
+        }
+        .copy-link-btn:active { background: var(--neon); color: #000; }
 
-        /* صندوق الإدخال */
         .input-container { position: fixed; bottom: 0; left: 0; right: 0; padding: 15px; background: linear-gradient(180deg, transparent, #000 80%); display: flex; justify-content: center; z-index: 100;}
         .input-box-wrapper { width: 100%; max-width: 820px; display: flex; align-items: center; gap: 8px; background: rgba(20, 25, 35, 0.95); border-radius: 15px; padding: 5px 10px; border: 1px solid var(--border); }
         input[type="text"] { flex: 1; background: transparent; border: none; color: #fff; font-size: 15px; padding: 12px; outline: none; }
@@ -58,7 +76,7 @@
         .send-btn { background: var(--neon); color: #000; border: none; width: 40px; height: 40px; border-radius: 50%; font-size: 18px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center;}
         .speak-btn { background: transparent; border: 1px solid var(--border); color: var(--neon); width: 35px; height: 35px; border-radius: 50%; font-size: 16px; cursor: pointer; margin-top: 10px; align-self: flex-end; display: flex; align-items: center; justify-content: center;}
 
-        /* شاشة التحديث الإجباري */
+        /* شاشة التحديث */
         #update-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 10000; display: none; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(10px); }
         .update-box { background: #0a0a0f; border: 2px solid var(--neon); border-radius: 20px; padding: 30px 20px; text-align: center; max-width: 400px; width: 100%; box-shadow: 0 0 40px rgba(0, 255, 204, 0.3); animation: zoomIn 0.3s ease-out; }
         .update-icon { font-size: 60px; margin-bottom: 15px; display: block; }
@@ -69,7 +87,6 @@
     </style>
 </head>
 <body>
-    <!-- شاشة التحديث -->
     <div id="update-modal">
         <div class="update-box">
             <span class="update-icon">🚀</span>
@@ -96,12 +113,7 @@
     </div>
     
     <div class="chat-wrapper" id="chat-wrapper">
-        <div class="chat-container" id="chat-container">
-            <!-- رسالة ترحيب ثابتة عشان لو الجافاسكريبت وقع ميبقاش الشاشة سودة -->
-            <div class="message-row ai">
-                <div class="message-content">أهلاً بك يا محمد 👋<br>أنا مساعدك الخارق. اسألني أي حاجة.</div>
-            </div>
-        </div>
+        <div class="chat-container" id="chat-container"></div>
     </div>
     
     <div class="input-container">
@@ -113,34 +125,55 @@
     </div>
 
     <script>
-        // 🚨 دالة تنسيق يدوية عشان منعتمدش على أي مكتبة خارجية
+        // 🚨 دالة تنسيق اللينكات والمربعات 🚨
         function parseMarkdown(text) {
+            if (!text) return '';
             let html = text;
-            // تحويل العناوين
+
+            // 1. تحويل اللينكات اللي شكل [title](url) لمربع فيه زرار نسخ
+            html = html.replace(/\[(.*?)\]\((.*?)\)/g, function(match, title, url) {
+                return `<div class="link-box">
+                            <a href="${url}" target="_blank" class="link-text">🔗 ${title}</a>
+                            <button class="copy-link-btn" onclick="copyLink('${url}')">⧉ نسخ</button>
+                        </div>`;
+            });
+
+            // 2. تحويل أي لينك عادي http لمربع بردو
+            html = html.replace(/(https?:\/\/[^\s<"]+)/g, function(url) {
+                // عشان نتجنب إننا نحط لينك جوه لينك
+                if(html.includes(`href="${url}"`)) return url; 
+                return `<div class="link-box">
+                            <a href="${url}" target="_blank" class="link-text">🔗 ${url}</a>
+                            <button class="copy-link-btn" onclick="copyLink('${url}')">⧉ نسخ</button>
+                        </div>`;
+            });
+
+            // 3. تنسيق باقي النص
             html = html.replace(/### (.*?)(?=\n|$)/g, '<h3>$1</h3>');
-            // تحويل الخط العريض
             html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-            // تحويل النقاط
             html = html.replace(/^- (.*?)$/gm, '<li>$1</li>');
             html = html.replace(/(<li>.*?<\/li>)/gs, '<ul>$1</ul>');
-            // تحويل اللينكات
-            html = html.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank">🔗 $1</a>');
-            // تحويل السطور لمسافات
             html = html.replace(/\n/g, '<br>');
+            
             return html;
         }
 
-        // نظام التخزين (Sessions)
-        let sessions = [];
-        let currentSessionId = null;
-        
-        try {
-            sessions = JSON.parse(localStorage.getItem('m.e_sessions')) || [];
-            currentSessionId = localStorage.getItem('m.e_current_session');
-        } catch (e) {
-            console.error("Error parsing local storage", e);
+        // دالة نسخ اللينك
+        function copyLink(url) {
+            navigator.clipboard.writeText(url).then(() => {
+                // تنبيه بسيط من غير ما يقطع الشات
+                let toast = document.createElement('div');
+                toast.innerText = 'تم نسخ الرابط! ⧉';
+                toast.style.cssText = 'position:fixed; bottom:80px; left:50%; transform:translateX(-50%); background:#00ffcc; color:#000; padding:10px 20px; border-radius:10px; font-weight:bold; z-index:9999; font-family:Cairo;';
+                document.body.appendChild(toast);
+                setTimeout(() => toast.remove(), 2000);
+            });
         }
 
+        // --- باقي كود التطبيق (الشاتات والصوت) ---
+        let sessions = JSON.parse(localStorage.getItem('m.e_sessions')) || [];
+        let currentSessionId = localStorage.getItem('m.e_current_session');
+        
         if (sessions.length === 0) { createNewChat(); } 
         else if (!currentSessionId || !sessions.find(s => s.id === currentSessionId)) { currentSessionId = sessions[0].id; }
 
@@ -200,7 +233,7 @@
             const session = getCurrentSession();
             
             if (!session || session.messages.length === 0) {
-                container.innerHTML = `<div class="message-row ai"><div class="message-content">أهلاً بك يا محمد 👋<br>أنا مساعدك الخارق. اسألني أي حاجة.</div></div>`;
+                container.innerHTML = `<div class="message-row ai"><div class="message-content">أهلاً بك يا محمد 👋<br>أنا مساعدك الخارق. اطلب أي كود أو معلومة.</div></div>`;
                 return;
             }
             
@@ -271,7 +304,7 @@
             document.getElementById('chat-wrapper').scrollTop = document.getElementById('chat-wrapper').scrollHeight;
 
             const loadingId = 'loading-' + Date.now();
-            chatContainer.innerHTML += `<div class="message-row ai" id="${loadingId}"><div class="message-content">⏳ بيفكر وبيبحث...</div></div>`;
+            chatContainer.innerHTML += `<div class="message-row ai" id="${loadingId}"><div class="message-content">⏳ جاري البحث...</div></div>`;
             document.getElementById('chat-wrapper').scrollTop = document.getElementById('chat-wrapper').scrollHeight;
 
             try {
@@ -297,7 +330,7 @@
             }
         }
 
-        // 🚨 كود التحديث الإجباري (شغال 100%) 🚨
+        // كود التحديث
         let newWorker;
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('sw.js').then(reg => {
@@ -312,9 +345,7 @@
             });
         }
         function applyUpdate() {
-            if (newWorker) {
-                newWorker.postMessage({ action: 'skipWaiting' });
-            }
+            if (newWorker) newWorker.postMessage({ action: 'skipWaiting' });
             window.location.reload();
         }
     </script>
