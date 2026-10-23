@@ -11,7 +11,7 @@ app.use(express.static(__dirname));
 
 app.get('/ping', (req, res) => res.send('ALIVE'));
 
-// 1. دالة الذكاء الاصطناعي (موديل Mistral)
+// 1. دالة الذكاء الاصطناعي (للكلام العادي بس)
 async function askAI(messages) {
     try {
         const response = await axios.post("https://text.pollinations.ai/openai", {
@@ -26,7 +26,52 @@ async function askAI(messages) {
     }
 }
 
-// 2. دالة البحث
+// 2. 🚨 صائد الأكواد (Code Hunter) - بيخش يدور ويستخرج الكود بس 🚨
+async function huntForCode(query) {
+    let extractedCodes = [];
+    // بنخلي البحث مخصوص للأكواد
+    let enhancedQuery = query + " code example github";
+    
+    try {
+        const searchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(enhancedQuery)}&kp=-2`;
+        const { data } = await axios.get(searchUrl, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' } });
+        const $ = cheerio.load(data);
+        
+        let links = [];
+        $('.result__a').slice(0, 5).each((i, el) => {
+            let href = $(el).attr('href');
+            if (href && href.includes('uddg=')) {
+                try { href = decodeURIComponent(href.split('uddg=')[1].split('&')[0]); } catch(e) {}
+            }
+            if (href && href.startsWith('http')) links.push(href);
+        });
+
+        // بنخش المواقع ونستخرج الأكواد
+        for (let link of links) {
+            try {
+                const siteData = await axios.get(link, { headers: { 'User-Agent': 'Mozilla/5.0' }, timeout: 5000 });
+                const site$ = cheerio.load(siteData.data);
+                
+                site$('pre, code').each((i, el) => {
+                    let codeText = site$(el).text().trim();
+                    // شروط: الكود يكون أطول من 30 حرف، وفيه رموز برمجية
+                    if (codeText.length > 30 && (codeText.includes('(') || codeText.includes('=') || codeText.includes('{'))) {
+                        if (!extractedCodes.includes(codeText)) {
+                            extractedCodes.push(codeText);
+                        }
+                    }
+                });
+                
+                // لو لقينا 3 أكواد كويسة، كفاية كده
+                if (extractedCodes.length >= 3) break;
+            } catch(e) {}
+        }
+    } catch (e) {}
+    
+    return extractedCodes;
+}
+
+// 3. دالة البحث العادية (للمعلومات)
 async function pureSearch(query) {
     let results = { snippets: [], wiki: "", topSites: [] };
     try {
@@ -53,30 +98,44 @@ app.post('/ask', async (req, res) => {
     let { prompt, history } = req.body;
     if (!prompt) return res.status(400).json({ error: "مفيش سؤال!" });
 
-    // 🚨 1. الإجابة الإجبارية عن المبرمج (عشان ميروحش يدور في جوجل)
-    if (/مين مبرمجك|مين مطورك|مين اللي عملك|مين صانعك|who made you|who is your developer/i.test(prompt)) {
-        return res.json({ final: "### 🤖 M.E Assistant\n\nأنا تطبيق **M.E Assistant**، ومبرمجي ومطوري هو العبقري **محمد**. هو اللي بناني من الصفر عشان أساعدك وأبحثلك عن أي حاجة! 🚀" });
+    // 1. الإجابة الإجبارية عن المبرمج
+    if (/مين مبرمجك|مين مطورك|مين اللي عملك|مين صانعك/i.test(prompt)) {
+        return res.json({ final: "### 🤖 M.E Assistant\n\nأنا تطبيق **M.E Assistant**، ومبرمجي ومطوري هو العبقري **محمد**. 🚀" });
     }
 
-    // 2. لو طلب صورة
-    if (/ارسم|صورة|صور/i.test(prompt)) {
+    // 2. 🚨 تفعيل وضع "صائد الأكواد" لو المستخدم طلب كود 🚨
+    const isCodeRequest = /كود|سكريبت|برمجة|python|javascript|html|c\+\+|java|هاك|اختراق|هكر/i.test(prompt);
+    
+    if (isCodeRequest) {
+        const codes = await huntForCode(prompt);
+        if (codes.length > 0) {
+            let codeAnswer = `### 💻 الكود اللي طلبته (تم استخراجه وتنقيته):\n\n`;
+            codes.forEach((code) => {
+                codeAnswer += `\`\`\`\n${code}\n\`\`\`\n\n`;
+            });
+            // بيرجع الكود بس من غير أي كلام إضافي
+            return res.json({ final: codeAnswer });
+        }
+    }
+
+    // 3. لو طلب صورة
+    if (/ارسم|صورة|صور/i.test(prompt) && !isCodeRequest) {
         let cleanQuery = prompt.replace(/(ارسم|صورة|صور|لي|عن)/g, '').trim();
         let imgUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(cleanQuery + ', highly detailed, 4k')}?width=1024&height=1024&nologo=true`;
         return res.json({ final: `### 🎨 الصورة اللي طلبتها:\n\n![صورة](${imgUrl})\n\n[⬇️ تحميل الصورة](${imgUrl})` });
     }
 
-    // تجهيز الذاكرة للذكاء الاصطناعي
-    let messages = [{ role: "system", content: "أنت المساعد الخارق M.E. مطورك هو محمد. ردودك بالمصري، ذكية، مباشرة. لو المستخدم سألك عن أي حاجة، جاوبه بذكاء." }];
+    // 4. الوضع العادي (AI يرد الأول)
+    let messages = [{ role: "system", content: "أنت المساعد الخارق M.E. مطورك هو محمد. ردودك بالمصري، ذكية، مباشرة." }];
     if (history && history.length > 0) messages = messages.concat(history.slice(-10));
     messages.push({ role: "user", content: prompt });
 
-    // 3. نجرب الذكاء الاصطناعي الأول
     let finalAnswer = await askAI(messages);
 
-    // 4. لو الذكاء الاصطناعي رفض أو فشل، نروح للبحث
+    // 5. لو الـ AI رفض، نبحث ونرجع معلومات
     if (finalAnswer === "ERROR_API" || finalAnswer.includes("لا يمكنني") || finalAnswer.includes("أنا آسف")) {
         const searchData = await pureSearch(prompt);
-        finalAnswer = `### 🌐 تقرير البحث (الاحتياطي) عن: ${prompt}\n\n`;
+        finalAnswer = `### 🌐 تقرير البحث عن: ${prompt}\n\n`;
         if (searchData.wiki) finalAnswer += `**📖 من ويكيبيديا:**\n${searchData.wiki}\n\n`;
         if (searchData.snippets.length > 0) {
             finalAnswer += `**📌 معلومات:**\n\n`;
@@ -92,4 +151,4 @@ app.post('/ask', async (req, res) => {
 });
 
 const PORT = 3000;
-app.listen(PORT, () => console.log(`✅ M.E Smart Assistant شغال على http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`✅ M.E Smart Agent شغال على http://localhost:${PORT}`));
