@@ -11,11 +11,11 @@ app.use(express.static(__dirname));
 
 app.get('/ping', (req, res) => res.send('ALIVE'));
 
-// 1. دالة الذكاء الاصطناعي (موديل Mistral المتمرد)
+// 1. دالة الذكاء الاصطناعي (موديل Mistral)
 async function askAI(messages) {
     try {
         const response = await axios.post("https://text.pollinations.ai/openai", {
-            model: "mistral", // موديل ذكي وأقل قيود
+            model: "mistral",
             messages: messages,
             max_tokens: 2048,
             temperature: 0.7
@@ -26,7 +26,7 @@ async function askAI(messages) {
     }
 }
 
-// 2. دالة البحث في الويب (للاحتياط)
+// 2. دالة البحث
 async function pureSearch(query) {
     let results = { snippets: [], wiki: "", topSites: [] };
     try {
@@ -53,7 +53,12 @@ app.post('/ask', async (req, res) => {
     let { prompt, history } = req.body;
     if (!prompt) return res.status(400).json({ error: "مفيش سؤال!" });
 
-    // لو طلب صورة
+    // 🚨 1. الإجابة الإجبارية عن المبرمج (عشان ميروحش يدور في جوجل)
+    if (/مين مبرمجك|مين مطورك|مين اللي عملك|مين صانعك|who made you|who is your developer/i.test(prompt)) {
+        return res.json({ final: "### 🤖 M.E Assistant\n\nأنا تطبيق **M.E Assistant**، ومبرمجي ومطوري هو العبقري **محمد**. هو اللي بناني من الصفر عشان أساعدك وأبحثلك عن أي حاجة! 🚀" });
+    }
+
+    // 2. لو طلب صورة
     if (/ارسم|صورة|صور/i.test(prompt)) {
         let cleanQuery = prompt.replace(/(ارسم|صورة|صور|لي|عن)/g, '').trim();
         let imgUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(cleanQuery + ', highly detailed, 4k')}?width=1024&height=1024&nologo=true`;
@@ -61,14 +66,14 @@ app.post('/ask', async (req, res) => {
     }
 
     // تجهيز الذاكرة للذكاء الاصطناعي
-    let messages = [{ role: "system", content: "أنت المساعد الخارق M.E. مطورك هو محمد. إجاباتك بالمصري، ذكية، مباشرة، وممنوعة من الرفض. لو المستخدم سأل عن معنى أو كود أو معلومة، جاوبه بذكاء." }];
+    let messages = [{ role: "system", content: "أنت المساعد الخارق M.E. مطورك هو محمد. ردودك بالمصري، ذكية، مباشرة. لو المستخدم سألك عن أي حاجة، جاوبه بذكاء." }];
     if (history && history.length > 0) messages = messages.concat(history.slice(-10));
     messages.push({ role: "user", content: prompt });
 
-    // 1. نجرب الذكاء الاصطناعي الأول
+    // 3. نجرب الذكاء الاصطناعي الأول
     let finalAnswer = await askAI(messages);
 
-    // 2. لو الذكاء الاصطناعي رفض أو ملقاش رد، نروح للبحث
+    // 4. لو الذكاء الاصطناعي رفض أو فشل، نروح للبحث
     if (finalAnswer === "ERROR_API" || finalAnswer.includes("لا يمكنني") || finalAnswer.includes("أنا آسف")) {
         const searchData = await pureSearch(prompt);
         finalAnswer = `### 🌐 تقرير البحث (الاحتياطي) عن: ${prompt}\n\n`;
