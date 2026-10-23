@@ -1,15 +1,14 @@
 {
   "name": "M.E Search",
   "short_name": "M.E",
-  "description": "محرك بحث ذكي خاص",
+  "description": "Deep Web Intelligence",
   "start_url": "/",
   "display": "standalone",
-  "display_override": ["standalone", "minimal-ui"],
   "background_color": "#050505",
   "theme_color": "#00ffcc",
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/8637/8637099.png",
+      "src": "https://cdn-icons-png.flaticon.com/512/10435/10435108.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
