@@ -7,7 +7,6 @@
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#050505">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         :root { --bg: #050505; --text: #e0e0e0; --neon: #00ffcc; --border: rgba(0, 255, 204, 0.2); --glass: rgba(15, 20, 30, 0.8); }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Cairo', sans-serif; -webkit-tap-highlight-color: transparent; }
@@ -49,7 +48,6 @@
         .message-content li { margin-bottom: 8px; color: #ccc; }
         .message-content p { margin-bottom: 10px; }
         .message-content img { max-width: 100%; border-radius: 10px; margin-top: 10px; border: 1px solid var(--border); }
-        
         .message-content a { display: inline-block; background: rgba(0,255,204,0.1); border: 1px solid var(--neon); color: var(--neon); padding: 8px 12px; border-radius: 8px; text-decoration: none; font-size: 13px; margin: 5px 0; word-break: break-all; }
 
         /* صندوق الإدخال */
@@ -60,19 +58,18 @@
         .send-btn { background: var(--neon); color: #000; border: none; width: 40px; height: 40px; border-radius: 50%; font-size: 18px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center;}
         .speak-btn { background: transparent; border: 1px solid var(--border); color: var(--neon); width: 35px; height: 35px; border-radius: 50%; font-size: 16px; cursor: pointer; margin-top: 10px; align-self: flex-end; display: flex; align-items: center; justify-content: center;}
 
-        /* 🚨 شاشة التحديث الإجباري 🚨 */
+        /* شاشة التحديث الإجباري */
         #update-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 10000; display: none; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(10px); }
         .update-box { background: #0a0a0f; border: 2px solid var(--neon); border-radius: 20px; padding: 30px 20px; text-align: center; max-width: 400px; width: 100%; box-shadow: 0 0 40px rgba(0, 255, 204, 0.3); animation: zoomIn 0.3s ease-out; }
         .update-icon { font-size: 60px; margin-bottom: 15px; display: block; }
         .update-box h2 { color: var(--neon); margin-bottom: 15px; font-size: 24px; font-weight: 900; }
         .update-box p { color: #ccc; margin-bottom: 25px; line-height: 1.8; font-size: 15px; }
         .update-box button { background: var(--neon); color: #000; border: none; padding: 15px; border-radius: 12px; font-weight: bold; font-size: 18px; cursor: pointer; width: 100%; transition: 0.3s; }
-        .update-box button:hover { box-shadow: 0 0 20px var(--neon); transform: scale(1.02); }
         @keyframes zoomIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
     </style>
 </head>
 <body>
-    <!-- 🚨 شاشة التحديث الإجباري 🚨 -->
+    <!-- شاشة التحديث -->
     <div id="update-modal">
         <div class="update-box">
             <span class="update-icon">🚀</span>
@@ -85,7 +82,7 @@
     <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
-            <h3>مشاريعي (الشاتات)</h3>
+            <h3>مشاريعي</h3>
             <button class="close-sidebar" onclick="toggleSidebar()">×</button>
         </div>
         <button onclick="createNewChat()" style="margin: 15px; padding: 12px; background: var(--neon); color: #000; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; font-family: 'Cairo';">+ شات جديد</button>
@@ -99,7 +96,12 @@
     </div>
     
     <div class="chat-wrapper" id="chat-wrapper">
-        <div class="chat-container" id="chat-container"></div>
+        <div class="chat-container" id="chat-container">
+            <!-- رسالة ترحيب ثابتة عشان لو الجافاسكريبت وقع ميبقاش الشاشة سودة -->
+            <div class="message-row ai">
+                <div class="message-content">أهلاً بك يا محمد 👋<br>أنا مساعدك الخارق. اسألني أي حاجة.</div>
+            </div>
+        </div>
     </div>
     
     <div class="input-container">
@@ -111,35 +113,34 @@
     </div>
 
     <script>
-        marked.setOptions({ breaks: true });
-
-        // 🚨 كود التحديث الإجباري 🚨
-        let newWorker;
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js').then(reg => {
-                reg.addEventListener('updatefound', () => {
-                    newWorker = reg.installing;
-                    newWorker.addEventListener('statechange', () => {
-                        // لو في نسخة جديدة اتثبتت وإحنا شغالين، نطلع شاشة التحديث
-                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                            document.getElementById('update-modal').style.display = 'flex';
-                        }
-                    });
-                });
-            });
-        }
-        function applyUpdate() {
-            if (newWorker) {
-                newWorker.postMessage({ action: 'skipWaiting' });
-            }
-            // إعادة تحميل الصفحة عشان التحديث يتم
-            window.location.reload();
+        // 🚨 دالة تنسيق يدوية عشان منعتمدش على أي مكتبة خارجية
+        function parseMarkdown(text) {
+            let html = text;
+            // تحويل العناوين
+            html = html.replace(/### (.*?)(?=\n|$)/g, '<h3>$1</h3>');
+            // تحويل الخط العريض
+            html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            // تحويل النقاط
+            html = html.replace(/^- (.*?)$/gm, '<li>$1</li>');
+            html = html.replace(/(<li>.*?<\/li>)/gs, '<ul>$1</ul>');
+            // تحويل اللينكات
+            html = html.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank">🔗 $1</a>');
+            // تحويل السطور لمسافات
+            html = html.replace(/\n/g, '<br>');
+            return html;
         }
 
-        // باقي الكود (الشاتات والذاكرة)
-        let sessions = JSON.parse(localStorage.getItem('m.e_sessions')) || [];
-        let currentSessionId = localStorage.getItem('m.e_current_session');
+        // نظام التخزين (Sessions)
+        let sessions = [];
+        let currentSessionId = null;
         
+        try {
+            sessions = JSON.parse(localStorage.getItem('m.e_sessions')) || [];
+            currentSessionId = localStorage.getItem('m.e_current_session');
+        } catch (e) {
+            console.error("Error parsing local storage", e);
+        }
+
         if (sessions.length === 0) { createNewChat(); } 
         else if (!currentSessionId || !sessions.find(s => s.id === currentSessionId)) { currentSessionId = sessions[0].id; }
 
@@ -204,7 +205,7 @@
             }
             
             session.messages.forEach((msg, index) => {
-                let htmlContent = marked.parse(msg.content);
+                let htmlContent = parseMarkdown(msg.content);
                 let speakBtn = msg.role === 'ai' ? `<button class="speak-btn" onclick="speakText('${msg.content.replace(/'/g, "\\'")}')">🔊</button>` : '';
                 container.innerHTML += `
                     <div class="message-row ${msg.role === 'user' ? 'user' : 'ai'}">
@@ -242,11 +243,11 @@
             let currentText = '';
             for (let i = 0; i < lines.length; i++) {
                 currentText += lines[i] + '\n';
-                element.innerHTML = marked.parse(currentText);
+                element.innerHTML = parseMarkdown(currentText);
                 document.getElementById('chat-wrapper').scrollTop = document.getElementById('chat-wrapper').scrollHeight;
                 await new Promise(r => setTimeout(r, speed));
             }
-            element.innerHTML = marked.parse(text);
+            element.innerHTML = parseMarkdown(text);
         }
 
         async function askAI() {
@@ -294,6 +295,27 @@
                 document.getElementById('loadingId').remove();
                 alert('السيرفر لسه بيصحى. استنى شوية وجرب.');
             }
+        }
+
+        // 🚨 كود التحديث الإجباري (شغال 100%) 🚨
+        let newWorker;
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js').then(reg => {
+                reg.addEventListener('updatefound', () => {
+                    newWorker = reg.installing;
+                    newWorker.addEventListener('statechange', () => {
+                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                            document.getElementById('update-modal').style.display = 'flex';
+                        }
+                    });
+                });
+            });
+        }
+        function applyUpdate() {
+            if (newWorker) {
+                newWorker.postMessage({ action: 'skipWaiting' });
+            }
+            window.location.reload();
         }
     </script>
 </body>
