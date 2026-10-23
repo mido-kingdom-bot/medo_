@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>M.E Search</title>
+    <title>M.E Assistant</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#050505">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
@@ -11,14 +11,31 @@
     <style>
         :root { --bg: #050505; --text: #e0e0e0; --neon: #00ffcc; --border: rgba(0, 255, 204, 0.2); --glass: rgba(15, 20, 30, 0.8); }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Cairo', sans-serif; -webkit-tap-highlight-color: transparent; }
-        body { background: var(--bg); color: var(--text); display: flex; flex-direction: column; height: 100dvh; }
+        body { background: var(--bg); color: var(--text); display: flex; flex-direction: column; height: 100dvh; overflow: hidden;}
         
-        .header { display: flex; align-items: center; justify-content: space-between; padding: 15px 20px; background: rgba(5,5,10,0.9); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; backdrop-filter: blur(10px);}
+        /* الهيدر */
+        .header { display: flex; align-items: center; justify-content: space-between; padding: 15px 20px; background: rgba(5,5,10,0.9); border-bottom: 1px solid var(--border); z-index: 100; backdrop-filter: blur(10px);}
         .header-title .main { font-size: 20px; font-weight: 900; background: linear-gradient(90deg, #fff, var(--neon)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .header-actions { display: flex; gap: 10px; }
+        .action-btn { background: transparent; border: 1px solid var(--border); color: var(--neon); padding: 8px 12px; border-radius: 10px; font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 5px;}
         
+        /* القائمة الجانبية (المشاريع/الشاتات) */
+        .sidebar { position: fixed; top: 0; right: -300px; width: 280px; height: 100dvh; background: #0a0a0f; border-left: 1px solid var(--border); z-index: 1000; transition: right 0.3s ease; display: flex; flex-direction: column; box-shadow: -5px 0 20px rgba(0,0,0,0.5);}
+        .sidebar.open { right: 0; }
+        .sidebar-header { padding: 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;}
+        .sidebar-header h3 { color: var(--neon); font-size: 18px; }
+        .close-sidebar { background: transparent; border: none; color: #fff; font-size: 24px; cursor: pointer;}
+        .chats-list { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px;}
+        .chat-item { padding: 12px; background: rgba(255,255,255,0.02); border: 1px solid #222; border-radius: 10px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: 0.2s;}
+        .chat-item:hover, .chat-item.active { background: rgba(0,255,204,0.1); border-color: var(--neon); }
+        .chat-item-title { font-size: 14px; color: #ccc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px;}
+        .delete-chat-btn { background: transparent; border: none; color: #ff4444; font-size: 16px; cursor: pointer; padding: 5px;}
+        .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 999; display: none; backdrop-filter: blur(2px);}
+        .overlay.show { display: block; }
+
+        /* الشات */
         .chat-wrapper { flex: 1; overflow-y: auto; padding-bottom: 100px; }
         .chat-container { width: 100%; max-width: 820px; margin: 0 auto; padding: 20px; display: flex; flex-direction: column; gap: 20px; }
-        
         .message-row { display: flex; flex-direction: column; width: 100%; animation: slideUp 0.3s ease-out; }
         .message-row.user { align-items: flex-start; }
         .message-row.ai { align-items: flex-end; }
@@ -35,15 +52,11 @@
         .message-content img { max-width: 100%; border-radius: 10px; margin-top: 10px; border: 1px solid var(--border); }
         
         .link-btn { display: flex; align-items: center; justify-content: space-between; background: rgba(0,255,204,0.1); border: 1px solid var(--neon); color: var(--neon); padding: 10px 15px; border-radius: 10px; text-decoration: none; font-size: 13px; margin: 8px 0; word-break: break-all; transition: 0.3s; }
-        .link-btn:hover { background: var(--neon); color: #000; }
 
         .input-container { position: fixed; bottom: 0; left: 0; right: 0; padding: 15px; background: linear-gradient(180deg, transparent, #000 80%); display: flex; justify-content: center; z-index: 100;}
         .input-box-wrapper { width: 100%; max-width: 820px; display: flex; align-items: center; gap: 8px; background: rgba(20, 25, 35, 0.95); border-radius: 15px; padding: 5px 10px; border: 1px solid var(--border); }
         input[type="text"] { flex: 1; background: transparent; border: none; color: #fff; font-size: 15px; padding: 12px; outline: none; }
-        
-        /* أزرار المايك والإرسال */
-        .icon-btn { background: transparent; border: none; color: #888; font-size: 22px; cursor: pointer; padding: 5px; transition: 0.3s; }
-        .icon-btn.active { color: #ff4444; animation: pulse 1s infinite; }
+        .icon-btn { background: transparent; border: none; color: #888; font-size: 22px; cursor: pointer; padding: 5px; }
         .send-btn { background: var(--neon); color: #000; border: none; width: 40px; height: 40px; border-radius: 50%; font-size: 18px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center;}
         .speak-btn { background: transparent; border: 1px solid var(--border); color: var(--neon); width: 35px; height: 35px; border-radius: 50%; font-size: 16px; cursor: pointer; margin-top: 10px; align-self: flex-end; display: flex; align-items: center; justify-content: center;}
 
@@ -52,11 +65,23 @@
     </style>
 </head>
 <body>
+    <!-- القائمة الجانبية -->
+    <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h3>مشاريعي (الشاتات)</h3>
+            <button class="close-sidebar" onclick="toggleSidebar()">×</button>
+        </div>
+        <button onclick="createNewChat()" style="margin: 15px; padding: 12px; background: var(--neon); color: #000; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; font-family: 'Cairo';">+ شات جديد</button>
+        <div class="chats-list" id="chats-list"></div>
+    </div>
+
     <div id="update-toast"><span>🚀 يوجد تحديث!</span><button onclick="applyUpdate()">تحديث</button></div>
     
     <div class="header">
+        <button class="action-btn" onclick="toggleSidebar()">☰ القائمة</button>
         <div class="header-title"><div class="main">M.E ASSISTANT</div></div>
-        <button onclick="newChat()" style="background:transparent; border:1px solid var(--neon); color:var(--neon); padding:6px 12px; border-radius:10px; font-size:13px;">+ NEW</button>
+        <button class="action-btn" onclick="createNewChat()">+ جديد</button>
     </div>
     
     <div class="chat-wrapper" id="chat-wrapper">
@@ -65,48 +90,111 @@
     
     <div class="input-container">
         <div class="input-box-wrapper">
-            <button class="icon-btn" id="mic-btn" onclick="startDictation()">🎤</button>
-            <input type="text" id="prompt" placeholder="اسأل عن أي حاجة أو اطلب صورة..." onkeypress="if(event.key === 'Enter') askAI()">
+            <button class="icon-btn" onclick="startDictation()">🎤</button>
+            <input type="text" id="prompt" placeholder="اسأل عن أي حاجة..." onkeypress="if(event.key === 'Enter') askAI()">
             <button class="send-btn" onclick="askAI()">↑</button>
         </div>
     </div>
 
     <script>
-        // تخصيص شكل اللينكات
         const renderer = new marked.Renderer();
         renderer.link = function(href, title, text) {
             return `<a href="${href}" target="_blank" class="link-btn">🔗 ${text} <span>↗</span></a>`;
         };
         marked.setOptions({ renderer: renderer, breaks: true });
 
-        // خدمة العامل (للتحديث التلقائي)
-        let newWorker;
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js').then(reg => {
-                reg.addEventListener('updatefound', () => {
-                    newWorker = reg.installing;
-                    newWorker.addEventListener('statechange', () => {
-                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                            document.getElementById('update-toast').classList.add('show');
-                        }
-                    });
-                });
+        // نظام التخزين (Sessions)
+        let sessions = JSON.parse(localStorage.getItem('m.e_sessions')) || [];
+        let currentSessionId = localStorage.getItem('m.e_current_session');
+        
+        // لو مفيش شاتات خالص، نعمل واحد
+        if (sessions.length === 0) {
+            createNewChat();
+        } else if (!currentSessionId || !sessions.find(s => s.id === currentSessionId)) {
+            currentSessionId = sessions[0].id;
+        }
+
+        function saveSessions() {
+            localStorage.setItem('m.e_sessions', JSON.stringify(sessions));
+            localStorage.setItem('m.e_current_session', currentSessionId);
+        }
+
+        function getCurrentSession() {
+            return sessions.find(s => s.id === currentSessionId);
+        }
+
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('open');
+            document.getElementById('overlay').classList.toggle('show');
+            if(document.getElementById('sidebar').classList.contains('open')) {
+                renderChatsList();
+            }
+        }
+
+        function renderChatsList() {
+            const list = document.getElementById('chats-list');
+            list.innerHTML = '';
+            // بنعرض الشاتات من الأحدث للأقدم
+            [...sessions].reverse().forEach(session => {
+                let item = document.createElement('div');
+                item.className = `chat-item ${session.id === currentSessionId ? 'active' : ''}`;
+                item.innerHTML = `
+                    <div class="chat-item-title">${session.title || 'شات جديد'}</div>
+                    <button class="delete-chat-btn" onclick="deleteChat(event, '${session.id}')">🗑️</button>
+                `;
+                item.onclick = (e) => {
+                    if(e.target.tagName !== 'BUTTON') {
+                        switchChat(session.id);
+                    }
+                };
+                list.appendChild(item);
             });
         }
-        function applyUpdate() { if (newWorker) newWorker.postMessage({ action: 'skipWaiting' }); window.location.reload(); }
 
-        let chatHistory = JSON.parse(localStorage.getItem('m.e_history')) || [];
+        function createNewChat() {
+            const newId = 'chat_' + Date.now();
+            const newSession = { id: newId, title: 'شات جديد', messages: [] };
+            sessions.push(newSession);
+            currentSessionId = newId;
+            saveSessions();
+            loadChat();
+            if(document.getElementById('sidebar').classList.contains('open')) toggleSidebar();
+        }
 
-        function loadHistory() {
+        function switchChat(id) {
+            currentSessionId = id;
+            saveSessions();
+            loadChat();
+            toggleSidebar();
+        }
+
+        function deleteChat(event, id) {
+            event.stopPropagation();
+            if(confirm('متأكد إنك عايز تمسح الشات ده؟')) {
+                sessions = sessions.filter(s => s.id !== id);
+                if (currentSessionId === id) {
+                    if (sessions.length > 0) currentSessionId = sessions[sessions.length - 1].id;
+                    else { createNewChat(); return; }
+                }
+                saveSessions();
+                renderChatsList();
+                loadChat();
+            }
+        }
+
+        function loadChat() {
             const container = document.getElementById('chat-container');
             container.innerHTML = '';
-            if(chatHistory.length === 0) {
-                container.innerHTML = `<div class="message-row ai"><div class="message-content">أهلاً بك يا محمد 👋<br>أنا مساعدك الشخصي. يمكنني البحث، إحضار الصور، والتحدث معك. جرب تقولي "ارسم قطة" أو اسألني أي سؤال!</div></div>`;
+            const session = getCurrentSession();
+            
+            if (!session || session.messages.length === 0) {
+                container.innerHTML = `<div class="message-row ai"><div class="message-content">أهلاً بك يا محمد 👋<br>أنا مساعدك. اسألني أي حاجة أو اطلب صورة.</div></div>`;
+                return;
             }
-            chatHistory.forEach((msg, index) => {
+            
+            session.messages.forEach((msg, index) => {
                 let htmlContent = marked.parse(msg.content);
                 let speakBtn = msg.role === 'ai' ? `<button class="speak-btn" onclick="speakText('${msg.content.replace(/'/g, "\\'")}')">🔊</button>` : '';
-                
                 container.innerHTML += `
                     <div class="message-row ${msg.role === 'user' ? 'user' : 'ai'}">
                         <div class="message-content" id="msg-${index}">${htmlContent}</div>
@@ -115,55 +203,32 @@
             });
             document.getElementById('chat-wrapper').scrollTop = document.getElementById('chat-wrapper').scrollHeight;
         }
-        loadHistory();
 
-        function newChat() { chatHistory = []; localStorage.removeItem('m.e_history'); loadHistory(); }
-
-        // 🚨 1. ميزة المايك (الاستماع للمستخدم) 🚨
         function startDictation() {
             if (window.hasOwnProperty('webkitSpeechRecognition')) {
                 var recognition = new webkitSpeechRecognition();
                 recognition.continuous = false;
                 recognition.interimResults = false;
-                recognition.lang = "ar-EG"; // اللهجة المصرية
-                
+                recognition.lang = "ar-EG";
                 recognition.start();
-                document.getElementById('mic-btn').classList.add('active');
-
                 recognition.onresult = function(e) {
                     document.getElementById('prompt').value = e.results[0][0].transcript;
                     recognition.stop();
-                    document.getElementById('mic-btn').classList.remove('active');
-                    askAI(); // يبعت السؤال أوتوماتيك
+                    askAI();
                 };
-                recognition.onerror = function(e) {
-                    document.getElementById('mic-btn').classList.remove('active');
-                };
-                recognition.onend = function(e) {
-                    document.getElementById('mic-btn').classList.remove('active');
-                };
-            } else {
-                alert('متصفحك مش بيدعم المايك.');
-            }
+            } else { alert('متصفحك مش بيدعم المايك.'); }
         }
 
-        // 🚨 2. ميزة التحدث (قراءة الردود) 🚨
         function speakText(text) {
-            // بنشيل الرموز واللينكات عشان يقرا الكلام بس
             let cleanText = text.replace(/[*#_`\-]/g, '').replace(/\[.*?\]\(.*?\)/g, '').replace(/https?:\/\/[^\s]+/g, '');
-            
             if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel(); // قفل أي كلام قديم
+                window.speechSynthesis.cancel();
                 var msg = new SpeechSynthesisUtterance(cleanText);
                 msg.lang = 'ar-EG';
-                msg.rate = 1.0; // السرعة
                 window.speechSynthesis.speak(msg);
-            } else {
-                alert('متصفحك مش بيدعم قراءة النصوص.');
             }
         }
 
-        // دالة الكتابة السريعة
         async function typeWriter(element, text, speed = 10) {
             element.innerHTML = '';
             const lines = text.split('\n');
@@ -182,26 +247,34 @@
             const prompt = promptInput.value.trim();
             if(!prompt) return;
 
-            // إيقاف أي صوت شغال
             if ('speechSynthesis' in window) window.speechSynthesis.cancel();
 
+            const session = getCurrentSession();
+            // تحديث عنوان الشات لو ده أول سؤال
+            if (session.messages.length === 0) {
+                session.title = prompt.substring(0, 25) + (prompt.length > 25 ? '...' : '');
+                saveSessions();
+            }
+
+            session.messages.push({ role: 'user', content: prompt });
+            saveSessions();
+            
             const chatContainer = document.getElementById('chat-container');
             chatContainer.innerHTML += `<div class="message-row user"><div class="message-content">${prompt}</div></div>`;
             promptInput.value = '';
             document.getElementById('chat-wrapper').scrollTop = document.getElementById('chat-wrapper').scrollHeight;
 
             const loadingId = 'loading-' + Date.now();
-            chatContainer.innerHTML += `<div class="message-row ai" id="${loadingId}"><div class="message-content">⏳ جاري التفكير والبحث...</div></div>`;
+            chatContainer.innerHTML += `<div class="message-row ai" id="${loadingId}"><div class="message-content">⏳ جاري التفكير...</div></div>`;
             document.getElementById('chat-wrapper').scrollTop = document.getElementById('chat-wrapper').scrollHeight;
 
             try {
-                const res = await fetch('/ask', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt, history: chatHistory }) });
+                const res = await fetch('/ask', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt, history: session.messages }) });
                 const data = await res.json();
                 
                 document.getElementById(loadingId).remove();
-                chatHistory.push({ role: 'user', content: prompt });
-                chatHistory.push({ role: 'assistant', content: data.final });
-                localStorage.setItem('m.e_history', JSON.stringify(chatHistory));
+                session.messages.push({ role: 'assistant', content: data.final });
+                saveSessions();
                 
                 const aiMsgId = 'ai-' + Date.now();
                 chatContainer.innerHTML += `
@@ -213,7 +286,7 @@
                 await typeWriter(document.getElementById(aiMsgId), data.final, 10);
 
             } catch (error) {
-                document.getElementById(loadingId).remove();
+                document.getElementById('loadingId').remove();
                 alert('السيرفر لسه بيصحى. استنى شوية وجرب.');
             }
         }
