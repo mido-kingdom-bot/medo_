@@ -18,7 +18,7 @@ async function pureSearch(query) {
         const { data } = await axios.get(searchUrl, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' } });
         const $ = cheerio.load(data);
         
-        $('.result__snippet').slice(0, 5).each((i, el) => { 
+        $('.result__snippet').slice(0, 4).each((i, el) => { 
             results.snippets.push($(el).text().trim()); 
         });
         
@@ -26,7 +26,11 @@ async function pureSearch(query) {
         $('.result__a').slice(0, 3).each((i, el) => {
             let href = $(el).attr('href');
             let title = $(el).text().trim();
-            if (href && href.includes('uddg=')) href = decodeURIComponent(href.split('uddg=')[1].split('&')[0]);
+            if (href && href.includes('uddg=')) {
+                try {
+                    href = decodeURIComponent(href.split('uddg=')[1].split('&')[0]);
+                } catch(e) {}
+            }
             if (href && href.startsWith('http')) links.push({ title, url: href });
         });
         
@@ -48,15 +52,20 @@ app.post('/ask', async (req, res) => {
     if (!prompt) return res.status(400).json({ error: "مفيش سؤال!" });
     
     const searchData = await pureSearch(prompt);
-    let finalAnswer = `### 🌐 نتائج البحث عن: "${prompt}"\n\n`;
     
-    if (searchData.wiki) finalAnswer += `**📖 من ويكيبيديا:**\n${searchData.wiki}\n\n`;
+    // تنسيق Markdown احترافي
+    let finalAnswer = `### 🌐 نتائج البحث عن: ${prompt}\n\n`;
+    
+    if (searchData.wiki) {
+        finalAnswer += `**📖 من ويكيبيديا:**\n${searchData.wiki}\n\n`;
+    }
     
     if (searchData.snippets.length > 0) {
         finalAnswer += `**📌 معلومات من الويب:**\n\n`;
         searchData.snippets.forEach((snip, index) => {
-            finalAnswer += `[${index + 1}] ${snip}\n\n`;
+            finalAnswer += `- ${snip}\n`;
         });
+        finalAnswer += `\n`;
     }
     
     if (searchData.topSites.length > 0) {
