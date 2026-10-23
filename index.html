@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>M.E Search</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#050505">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg: #050505; --text: #e0e0e0; --neon: #00ffcc; --neon-dim: rgba(0, 255, 204, 0.15); --border: rgba(0, 255, 204, 0.15); --glass: rgba(15, 20, 30, 0.6); }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Cairo', sans-serif; -webkit-tap-highlight-color: transparent; }
+        html, body { height: 100%; overflow: hidden; }
+        body { background: var(--bg); color: var(--text); display: flex; flex-direction: column; height: 100dvh; position: relative; background-image: radial-gradient(circle at 15% 15%, rgba(0,255,204,0.06) 0%, transparent 45%), radial-gradient(circle at 85% 85%, rgba(0,255,204,0.06) 0%, transparent 45%), linear-gradient(180deg, #050505 0%, #08080f 100%); }
+        body::before { content: ''; position: fixed; inset: 0; background-image: linear-gradient(rgba(0,255,204,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,255,204,0.03) 1px, transparent 1px); background-size: 40px 40px; pointer-events: none; z-index: 0; animation: gridMove 20s linear infinite; }
+        @keyframes gridMove { from { background-position: 0 0; } to { background-position: 40px 40px; } }
+        
+        .header { position: relative; z-index: 10; display: flex; align-items: center; justify-content: space-between; padding: 15px 20px; background: rgba(5,5,10,0.85); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border); box-shadow: 0 4px 30px rgba(0,0,0,0.7); }
+        .header-title { display: flex; flex-direction: column; gap: 2px; }
+        .header-title .main { font-size: 22px; font-weight: 900; background: linear-gradient(90deg, #fff 0%, var(--neon) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: 1px; }
+        .header-title .sub { font-size: 11px; color: var(--neon); font-family: 'Space Mono', monospace; opacity: 0.7; letter-spacing: 2px; }
+        .controls { display: flex; gap: 8px; }
+        .icon-btn { background: rgba(0, 255, 204, 0.05); border: 1px solid var(--border); color: var(--neon); padding: 8px 14px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; transition: 0.3s; font-family: 'Space Mono', monospace; }
+        .icon-btn:hover { background: var(--neon); color: #000; box-shadow: 0 0 20px var(--neon-dim); }
+        
+        .stats-bar { display: flex; justify-content: space-around; padding: 8px; background: rgba(0,0,0,0.4); border-bottom: 1px solid var(--border); font-family: 'Space Mono', monospace; font-size: 10px; color: #666; z-index: 5; }
+        .stats-bar span b { color: var(--neon); }
+        
+        .chat-wrapper { flex: 1; overflow-y: auto; display: flex; flex-direction: column; padding-bottom: 100px; z-index: 2; scrollbar-width: thin; scrollbar-color: var(--neon) transparent; }
+        .chat-wrapper::-webkit-scrollbar { width: 4px; }
+        .chat-wrapper::-webkit-scrollbar-thumb { background: var(--neon); border-radius: 4px; }
+        .chat-container { width: 100%; max-width: 820px; margin: 0 auto; padding: 20px; display: flex; flex-direction: column; gap: 20px; }
+        
+        .message-row { display: flex; flex-direction: column; width: 100%; animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
+        .message-row.user { align-items: flex-start; }
+        .message-row.ai { align-items: flex-end; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        .message-header { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 11px; margin-bottom: 6px; color: var(--neon); letter-spacing: 2px; font-family: 'Space Mono', monospace; text-transform: uppercase; }
+        .message-header::before { content: '◉'; font-size: 14px; }
+        .message-header .time { color: #444; font-size: 9px; margin-right: auto; }
+        
+        .message-content { font-size: 15px; line-height: 1.9; white-space: pre-wrap; padding: 15px 20px; border-radius: 16px; max-width: 92%; word-wrap: break-word; backdrop-filter: blur(10px); position: relative; }
+        .message-row.user .message-content { background: linear-gradient(135deg, rgba(0,255,204,0.12), rgba(0,255,204,0.03)); border: 1px solid rgba(0,255,204,0.35); border-top-left-radius: 4px; color: #fff; }
+        .message-row.ai .message-content { background: var(--glass); border: 1px solid var(--border); border-top-right-radius: 4px; max-width: 100%; }
+
+        /* أكواد والنسخ */
+        .code-box { position: relative; background: #000; border: 1px solid var(--border); border-radius: 8px; margin: 10px 0; padding: 15px; direction: ltr; text-align: left; overflow-x: auto; width: 100%; }
+        .code-box pre { margin: 0; color: var(--neon); font-family: monospace; font-size: 14px; white-space: pre-wrap; }
+        .copy-code-btn { position: absolute; top: 5px; right: 5px; background: #222; color: #fff; border: 1px solid #444; padding: 4px 8px; border-radius: 5px; font-size: 11px; cursor: pointer; font-family: 'Cairo', sans-serif;}
+        .copy-code-btn:hover { background: var(--neon); color: #000; }
+
+        /* لينكات */
+        .link-btn { display: inline-flex; align-items: center; gap: 5px; background: rgba(0,255,204,0.1); color: var(--neon); padding: 5px 10px; border-radius: 5px; text-decoration: none; font-size: 13px; margin: 5px 0; border: 1px solid var(--border); word-break: break-all; }
+        .copy-link-btn { background: transparent; border: 1px solid var(--border); color: #aaa; border-radius: 5px; padding: 2px 6px; font-size: 11px; cursor: pointer; margin-right: 5px;}
+        .copy-link-btn:hover { background: var(--neon); color: #000; }
+
+        /* صور */
+        .img-box { margin: 10px 0; text-align: center; }
+        .img-box img { max-width: 100%; border-radius: 8px; border: 1px solid var(--border); }
+        .download-img-btn { display: block; text-align: center; background: rgba(0,255,204,0.1); color: var(--neon); padding: 8px; border-radius: 8px; text-decoration: none; font-size: 13px; margin-top: 8px; border: 1px solid var(--border); }
+
+        .input-container { position: fixed; bottom: 0; left: 0; right: 0; padding: 15px; padding-bottom: calc(18px + env(safe-area-inset-bottom)); background: linear-gradient(180deg, transparent, #000 70%); display: flex; justify-content: center; z-index: 10; }
+        .input-box-wrapper { width: 100%; max-width: 820px; display: flex; align-items: center; gap: 8px; background: rgba(15, 20, 30, 0.9); backdrop-filter: blur(20px); border-radius: 15px; padding: 6px 6px 6px 18px; border: 1px solid var(--border); transition: 0.3s; box-shadow: 0 10px 40px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.05); }
+        .input-box-wrapper:focus-within { border-color: var(--neon); box-shadow: 0 0 30px var(--neon-dim), inset 0 1px 0 rgba(0,255,204,0.1); }
+        input[type="text"] { flex: 1; background: transparent; border: none; color: #fff; font-size: 15px; padding: 12px 0; outline: none; font-weight: 600; }
+        input::placeholder { color: #555; }
+        .send-btn { background: var(--neon); color: #000; border: none; width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 20px; font-weight: 900; transition: 0.3s; box-shadow: 0 0 20px var(--neon-dim); }
+        .send-btn:active { transform: scale(0.92); }
+
+        .loading-dots { display: flex; gap: 6px; align-items: center; padding: 10px 0; }
+        .dot { width: 8px; height: 8px; background: var(--neon); border-radius: 50%; animation: bounce 1.4s infinite ease-in-out both; box-shadow: 0 0 10px var(--neon); }
+        .dot:nth-child(1) { animation-delay: -0.32s; }
+        .dot:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes bounce { 0%, 80%, 100% { transform: scale(0); opacity: 0.3; } 40% { transform: scale(1); opacity: 1; } }
+        
+        .footer-credit { text-align: center; padding: 10px; font-family: 'Space Mono', monospace; font-size: 9px; color: #333; letter-spacing: 2px; }
+        
+        /* رسالة التحديث */
+        #update-toast { position: fixed; top: -100px; left: 50%; transform: translateX(-50%); background: var(--neon); color: #000; padding: 12px 20px; border-radius: 0 0 15px 15px; font-weight: bold; z-index: 9999; transition: top 0.5s ease; display: flex; align-items: center; gap: 10px; box-shadow: 0 0 20px var(--neon); font-family: 'Cairo', sans-serif; font-size: 14px;}
+        #update-toast.show { top: 0; }
+        #update-toast button { background: #000; color: var(--neon); border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-weight: bold;}
+    </style>
+</head>
+<body>
+    <!-- إشعار التحديث -->
+    <div id="update-toast">
+        <span>🚀 يوجد تحديث جديد!</span>
+        <button onclick="applyUpdate()">تحديث الآن</button>
+    </div>
+
+    <div class="header">
+        <div class="header-title">
+            <div class="main">M.E SEARCH</div>
+            <div class="sub">DEEP WEB INTELLIGENCE v2.0</div>
+        </div>
+        <div class="controls"><button class="icon-btn" onclick="newChat()">+ NEW</button></div>
+    </div>
+    <div class="stats-bar">
+        <span>STATUS: <b>ONLINE</b></span>
+        <span>MODE: <b>PURE</b></span>
+        <span>SEARCHES: <b id="search-count">0</b></span>
+    </div>
+    <div class="chat-wrapper" id="chat-wrapper">
+        <div class="chat-container" id="chat-container"></div>
+        <div class="footer-credit">ENGINEERED BY MOHAMED · M.E SYSTEMS</div>
+    </div>
+    <div class="input-container">
+        <div class="input-box-wrapper">
+            <input type="text" id="prompt" placeholder="ابحث عن أي شيء في العالم..." onkeypress="if(event.key === 'Enter') askAI()">
+            <button class="send-btn" onclick="askAI()">↑</button>
+        </div>
+    </div>
+    <script>
+        setInterval(() => { fetch('/ping').catch(e => console.log('Keep-alive')); }, 120000);
+        let newWorker;
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js').then(reg => {
+                reg.addEventListener('updatefound', () => {
+                    newWorker = reg.installing;
+                    newWorker.addEventListener('statechange', () => {
+                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                            document.getElementById('update-toast').classList.add('show');
+                        }
+                    });
+                });
+            });
+        }
+
+        function applyUpdate() {
+            if (newWorker) {
+                newWorker.postMessage({ action: 'skipWaiting' });
+            }
+            window.location.reload();
+        }
+        
+        let chatHistory = JSON.parse(localStorage.getItem('m.e_pure_search_history')) || [];
+        let searchCount = parseInt(localStorage.getItem('m.e_search_count') || '0');
+        document.getElementById('search-count').innerText = searchCount;
+
+        function timeNow() {
+            const d = new Date();
+            return d.getHours().toString().padStart(2,'0') + ':' + d.getMinutes().toString().padStart(2,'0');
+        }
+
+        function loadHistory() {
+            const container = document.getElementById('chat-container');
+            container.innerHTML = '';
+            if(chatHistory.length === 0) {
+                container.innerHTML = `
+                    <div class="message-row ai">
+                        <div class="message-header">SYSTEM READY <span class="time">${timeNow()}</span></div>
+                        <div class="message-content">مرحباً يا محمد 👋<br>أنا <strong>محرك البحث المباشر</strong> الخاص بك.<br>أكتب أي استفسار وسأبحث في <strong>جوجل، ويكيبيديا، وأهم المصادر</strong> لأحضر لك تقريراً منسقاً بالكامل.</div>
+                    </div>`;
+            }
+            chatHistory.forEach(msg => {
+                container.innerHTML += `
+                    <div class="message-row ${msg.role === 'user' ? 'user' : 'ai'}">
+                        <div class="message-header">${msg.role === 'user' ? 'USER INPUT' : 'SEARCH REPORT'} <span class="time">${msg.time || ''}</span></div>
+                        <div class="message-content">${formatText(msg.content)}</div>
+                    </div>`;
+            });
+            document.getElementById('chat-wrapper').scrollTop = document.getElementById('chat-wrapper').scrollHeight;
+        }
+        loadHistory();
+
+        function newChat() { 
+            if(confirm('هل تريد بدء محادثة جديدة؟')) {
+                chatHistory = []; 
+                localStorage.removeItem('m.e_pure_search_history'); 
+                loadHistory(); 
+            }
+        }
+
+        function formatText(text) {
+            if(!text) return '';
+            
+            // 1. أكواد
+            let formatted = text.replace(/```(?:[a-z]+)?\n?([\s\S]*?)```/g, function(match, code) {
+                return `<div class="code-box"><button class="copy-code-btn" onclick="copyCode(this)">📋 نسخ</button><pre>${code.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre></div>`;
+            });
+
+            // 2. لينكات
+            formatted = formatted.replace(/(https?:\/\/[^\s]+)/g, function(url) {
+                return `<a href="${url}" target="_blank" class="link-btn">🔗 ${url}</a> <button class="copy-link-btn" onclick="copyLink('${url}')">📋</button>`;
+            });
+
+            // 3. صور (لو لقى لينكات صور)
+            formatted = formatted.replace(/!\[(.*?)\]\((.*?)\)/g, function(match, alt, src) {
+                return `<div class="img-box"><img src="${src}" alt="${alt}"><a href="${src}" download class="download-img-btn">⬇️ تحميل الصورة</a></div>`;
+            });
+
+            formatted = formatted.replace(/###(.*?)(?=\n|$)/g, '<h3>$1</h3>');
+            formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            formatted = formatted.replace(/^-\s(.*?)$/gm, '<li>$1</li>');
+            formatted = formatted.replace(/(<li>.*?<\/li>)/gs, '<ul>$1</ul>');
+            return formatted;
+        }
+
+        function copyCode(btn) {
+            const code = btn.nextElementSibling.innerText;
+            navigator.clipboard.writeText(code).then(() => {
+                btn.innerText = "✅ تم النسخ";
+                setTimeout(() => btn.innerText = "📋 نسخ", 2000);
+            });
+        }
+
+        function copyLink(url) {
+            navigator.clipboard.writeText(url).then(() => {
+                alert('تم نسخ الرابط');
+            });
+        }
+
+        async function askAI() {
+            const promptInput = document.getElementById('prompt');
+            const chatWrapper = document.getElementById('chat-wrapper');
+            const chatContainer = document.getElementById('chat-container');
+            const prompt = promptInput.value.trim();
+            if(!prompt) return;
+
+            chatContainer.innerHTML += `
+                <div class="message-row user">
+                    <div class="message-header">USER INPUT <span class="time">${timeNow()}</span></div>
+                    <div class="message-content">${prompt}</div>
+                </div>`;
+            promptInput.value = '';
+            chatWrapper.scrollTop = chatWrapper.scrollHeight;
+
+            const loadingId = 'loading-' + Date.now();
+            chatContainer.innerHTML += `
+                <div class="message-row ai" id="${loadingId}">
+                    <div class="message-header">SCANNING WEB... <span class="time">${timeNow()}</span></div>
+                    <div class="message-content">
+                        <div class="loading-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+                    </div>
+                </div>`;
+            chatWrapper.scrollTop = chatWrapper.scrollHeight;
+
+            try {
+                const response = await fetch('/ask', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt }) });
+                const data = await response.json();
+                
+                document.getElementById(loadingId).remove();
+                
+                searchCount++;
+                localStorage.setItem('m.e_search_count', searchCount);
+                document.getElementById('search-count').innerText = searchCount;
+
+                chatHistory.push({ role: 'user', content: prompt, time: timeNow() });
+                chatHistory.push({ role: 'assistant', content: data.final, time: timeNow() });
+                localStorage.setItem('m.e_pure_search_history', JSON.stringify(chatHistory));
+
+                chatContainer.innerHTML += `
+                    <div class="message-row ai">
+                        <div class="message-header">SEARCH REPORT <span class="time">${timeNow()}</span></div>
+                        <div class="message-content">${formatText(data.final)}</div>
+                    </div>`;
+                chatWrapper.scrollTop = chatWrapper.scrollHeight;
+
+            } catch (error) {
+                document.getElementById('loadingId').remove();
+                chatContainer.innerHTML += `
+                    <div class="message-row ai">
+                        <div class="message-header" style="color:#ff4444;">CONNECTION ERROR</div>
+                        <div class="message-content" style="color:#ff4444; border-color:#ff4444;">❌ السيرفر مش شغال.</div>
+                    </div>`;
+            }
+        }
+    </script>
+</body>
+</html>
