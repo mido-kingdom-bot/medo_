@@ -19,7 +19,7 @@ async function pureSearch(query) {
         const $ = cheerio.load(data);
         
         $('.result__snippet').slice(0, 4).each((i, el) => { 
-            results.snippets.push($(el).text().trim()); 
+            results.snippets.push($(el).text().replace(/\s+/g, ' ').trim()); 
         });
         
         let links = [];
@@ -48,7 +48,7 @@ app.post('/ask', async (req, res) => {
     if (!prompt) return res.status(400).json({ error: "مفيش سؤال!" });
     
     const searchData = await pureSearch(prompt);
-    let finalAnswer = `### 🌐 نتائج البحث عن: ${prompt}\n\n`;
+    let finalAnswer = `### 🌐 تقرير البحث: ${prompt}\n\n`;
     
     if (searchData.wiki) finalAnswer += `**📖 من ويكيبيديا:**\n${searchData.wiki}\n\n`;
     
