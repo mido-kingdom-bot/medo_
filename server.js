@@ -11,8 +11,11 @@ app.use(express.static(__dirname));
 
 app.get('/ping', (req, res) => res.send('ALIVE'));
 
+// دالة البحث العميق
 async function pureSearch(query) {
     let results = { snippets: [], wiki: "", topSites: [] };
+    
+    // 1. البحث في DuckDuckGo
     try {
         const searchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}&kp=-2`;
         const { data } = await axios.get(searchUrl, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' } });
@@ -34,6 +37,7 @@ async function pureSearch(query) {
         results.topSites = links;
     } catch (e) {}
     
+    // 2. البحث في ويكيبيديا (مهم للأسئلة المعرفية)
     try {
         const wikiUrl = `https://ar.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&utf8=&format=json`;
         const wikiRes = await axios.get(wikiUrl);
@@ -44,13 +48,43 @@ async function pureSearch(query) {
 }
 
 app.post('/ask', async (req, res) => {
-    const { prompt } = req.body;
+    let { prompt, history } = req.body;
     if (!prompt) return res.status(400).json({ error: "مفيش سؤال!" });
+
+    // 🚨 1. الذكاء البسيط (ردود الترحيب والكلام العادي)
+    const greetings = ['ازيك', 'إزيك', 'ازايك', 'عامل ايه', 'اخبارك', 'صباح الخير', 'مساء الخير', 'مين انت', 'انت مين'];
+    const promptLower = prompt.toLowerCase().trim();
     
-    const searchData = await pureSearch(prompt);
-    let finalAnswer = `### 🌐 تقرير البحث: ${prompt}\n\n`;
+    if (greetings.some(g => promptLower.includes(g))) {
+        return res.json({ final: `### 🤖 M.E Search\n\nأهلاً بك يا محمد! أنا بخير الحمد لله. أنا **محرك البحث الخاص بك**. اكتب أي حاجة عايز تدور عليها وأنا هجبلك المعلومات واللينكات.` });
+    }
+
+    // 🚨 2. ذاكرة المحادثة (لو السؤال قصير، ندمجه مع اللي قبله)
+    let finalQuery = prompt;
+    if (prompt.length < 15 && history && history.length > 0) {
+        const lastUserMsg = history.slice().reverse().find(m => m.role === 'user');
+        if (lastUserMsg && !greetings.some(g => lastUserMsg.content.includes(g))) {
+            // لو السؤال الجديد كلمة واحدة أو كلمتين، نضيفه للسؤال القديم
+            finalQuery = `${lastUserMsg.content} ${prompt}`; 
+        }
+    }
+
+    // 🚨 3. تنظيف البحث (شيل الكلمات الزيادة)
+    const stopWords = /(ابحث لي عن|ابحث عن|عايز اعرف|قوليلي|هات لي|من فضلك|لو سمحت|ممكن)/gi;
+    finalQuery = finalQuery.replace(stopWords, '').trim();
+
+    // لو مفيش كلام بعد التنظيف، نرجع للسؤال الأصلي
+    if (!finalQuery) finalQuery = prompt;
+
+    // 4. البحث الفعلي
+    const searchData = await pureSearch(finalQuery);
     
-    if (searchData.wiki) finalAnswer += `**📖 من ويكيبيديا:**\n${searchData.wiki}\n\n`;
+    // 5. تنسيق النتيجة
+    let finalAnswer = `### 🌐 تقرير البحث عن: ${finalQuery}\n\n`;
+    
+    if (searchData.wiki) {
+        finalAnswer += `**📖 من ويكيبيديا:**\n${searchData.wiki}\n\n`;
+    }
     
     if (searchData.snippets.length > 0) {
         finalAnswer += `**📌 معلومات من الويب:**\n\n`;
@@ -74,4 +108,4 @@ app.post('/ask', async (req, res) => {
 });
 
 const PORT = 3000;
-app.listen(PORT, () => console.log(`✅ M.E Pure Search شغال على http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`✅ M.E Smart Search شغال على http://localhost:${PORT}`));

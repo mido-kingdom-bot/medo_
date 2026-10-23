@@ -156,7 +156,7 @@
             document.getElementById('chat-wrapper').scrollTop = document.getElementById('chat-wrapper').scrollHeight;
 
             try {
-                const res = await fetch('/ask', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt }) });
+                const res = await fetch('/ask', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt, history: chatHistory }) });
                 const data = await res.json();
                 
                 document.getElementById(loadingId).remove();
