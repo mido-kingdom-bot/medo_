@@ -10,43 +10,45 @@
     <style>
         :root { --bg: #050505; --text: #e0e0e0; --neon: #00ffcc; --border: rgba(0, 255, 204, 0.2); --glass: rgba(15, 20, 30, 0.8); }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Cairo', sans-serif; -webkit-tap-highlight-color: transparent; }
-        body { background: var(--bg); color: var(--text); display: flex; flex-direction: column; height: 100dvh; overflow: hidden;}
+        
+        /* منع السكرول الأفقي نهائياً */
+        html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
+        body { background: var(--bg); color: var(--text); display: flex; flex-direction: column; height: 100dvh; }
         
         .header { display: flex; align-items: center; justify-content: space-between; padding: 15px 20px; background: rgba(5,5,10,0.9); border-bottom: 1px solid var(--border); z-index: 100; backdrop-filter: blur(10px);}
         .header-title .main { font-size: 20px; font-weight: 900; background: linear-gradient(90deg, #fff, var(--neon)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         .action-btn { background: transparent; border: 1px solid var(--border); color: var(--neon); padding: 8px 12px; border-radius: 10px; font-size: 14px; cursor: pointer; }
         
-        .chat-wrapper { flex: 1; overflow-y: auto; padding-bottom: 100px; }
+        .chat-wrapper { flex: 1; overflow-y: auto; overflow-x: hidden; padding-bottom: 100px; }
         .chat-container { width: 100%; max-width: 820px; margin: 0 auto; padding: 20px; display: flex; flex-direction: column; gap: 20px; }
         .message-row { display: flex; flex-direction: column; width: 100%; animation: slideUp 0.3s ease-out; }
         .message-row.user { align-items: flex-start; }
         .message-row.ai { align-items: flex-end; }
         @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         
-        .message-content { font-size: 15px; line-height: 1.8; padding: 15px 20px; border-radius: 16px; max-width: 95%; word-wrap: break-word; background: var(--glass); border: 1px solid var(--border); }
+        /* منع الكلام الطويل إنه يكسر الشاشة */
+        .message-content { font-size: 15px; line-height: 1.8; padding: 15px 20px; border-radius: 16px; max-width: 95%; background: var(--glass); border: 1px solid var(--border); overflow: hidden; word-break: break-word; overflow-wrap: anywhere; }
         .message-row.user .message-content { background: rgba(0,255,204,0.15); border-color: var(--neon); color: #fff; }
         
-        /* تنسيق الكلام عشان ميبقاش داخل في بعضه */
-        .normal-text { margin-bottom: 10px; display: block; }
+        .normal-text { margin-bottom: 10px; display: block; word-break: break-word; overflow-wrap: anywhere; }
         .normal-text h3 { color: var(--neon); margin: 15px 0 10px; font-size: 18px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
         .normal-text strong { color: #fff; font-weight: 700; }
         .normal-text ul { padding-right: 20px; margin: 10px 0; }
-        .normal-text li { margin-bottom: 8px; color: #ccc; padding-bottom: 8px; border-bottom: 1px dashed rgba(255,255,255,0.05); }
+        .normal-text li { margin-bottom: 8px; color: #ccc; padding-bottom: 8px; border-bottom: 1px dashed rgba(255,255,255,0.05); word-break: break-word; }
         .normal-text li:last-child { border-bottom: none; }
         .normal-text p { margin-bottom: 10px; }
         .normal-text img { max-width: 100%; border-radius: 10px; margin-top: 10px; border: 1px solid var(--border); }
 
-        /* تنسيق اللينكات عشان تبقى في مربع وزرار نسخ */
-        .link-container { display: flex; align-items: center; justify-content: space-between; background: #0a0a0f; border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; margin: 8px 0; gap: 10px; }
-        .link-text { color: var(--neon); text-decoration: none; font-size: 13px; word-break: break-all; flex: 1; }
-        .copy-link-btn { background: rgba(0, 255, 204, 0.1); border: 1px solid var(--neon); color: var(--neon); padding: 5px 12px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 5px; font-family: 'Cairo', sans-serif; white-space: nowrap;}
-        .copy-link-btn:active { background: var(--neon); color: #000; }
+        /* تنسيق اللينكات عشان متطلعش برة الشاشة */
+        .link-container { display: flex; align-items: center; justify-content: space-between; background: #0a0a0f; border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; margin: 8px 0; gap: 10px; max-width: 100%; overflow: hidden; }
+        .link-text { color: var(--neon); text-decoration: none; font-size: 13px; flex: 1; word-break: break-all; overflow-wrap: anywhere; max-width: 100%; }
+        .copy-link-btn { background: rgba(0, 255, 204, 0.1); border: 1px solid var(--neon); color: var(--neon); padding: 5px 12px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 5px; font-family: 'Cairo', sans-serif; white-space: nowrap; flex-shrink: 0;}
 
-        .input-container { position: fixed; bottom: 0; left: 0; right: 0; padding: 15px; background: linear-gradient(180deg, transparent, #000 80%); display: flex; justify-content: center; z-index: 100;}
+        .input-container { position: fixed; bottom: 0; left: 0; right: 0; padding: 15px; background: linear-gradient(180deg, transparent, #000 80%); display: flex; justify-content: center; z-index: 100; max-width: 100%;}
         .input-box-wrapper { width: 100%; max-width: 820px; display: flex; align-items: center; gap: 8px; background: rgba(20, 25, 35, 0.95); border-radius: 15px; padding: 5px 10px; border: 1px solid var(--border); }
-        input[type="text"] { flex: 1; background: transparent; border: none; color: #fff; font-size: 15px; padding: 12px; outline: none; }
+        input[type="text"] { flex: 1; background: transparent; border: none; color: #fff; font-size: 15px; padding: 12px; outline: none; min-width: 0; }
         .icon-btn { background: transparent; border: none; color: #888; font-size: 22px; cursor: pointer; padding: 5px; }
-        .send-btn { background: var(--neon); color: #000; border: none; width: 40px; height: 40px; border-radius: 50%; font-size: 18px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center;}
+        .send-btn { background: var(--neon); color: #000; border: none; width: 40px; height: 40px; border-radius: 50%; font-size: 18px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0;}
         .speak-btn { background: transparent; border: 1px solid var(--border); color: var(--neon); width: 35px; height: 35px; border-radius: 50%; font-size: 16px; cursor: pointer; margin-top: 10px; align-self: flex-end; display: flex; align-items: center; justify-content: center;}
     </style>
 </head>
@@ -70,28 +72,32 @@
     </div>
 
     <script>
+        // دالة تنسيق الكلام واللينكات (معدلة عشان متبوظش الشاشة)
         function parseMarkdown(text) {
             if (!text) return '';
             let html = text;
 
-            // 1. تحويل اللينكات اللي شكل [title](url) لمربع فيه زرار نسخ
+            // 1. اللينكات اللي شكل [title](url)
             html = html.replace(/\[(.*?)\]\((.*?)\)/g, function(match, title, url) {
                 return `<div class="link-container"><a href="${url}" target="_blank" class="link-text">🔗 ${title}</a><button class="copy-link-btn" onclick="copyLink('${url}')">⧉ نسخ</button></div>`;
             });
 
-            // 2. تحويل أي لينك عادي http لمربع بردو
-            html = html.replace(/(https?:\/\/[^\s<"]+)/g, function(url) {
-                if(html.includes(`href="${url}"`)) return url; 
-                return `<div class="link-container"><a href="${url}" target="_blank" class="link-text">🔗 ${url}</a><button class="copy-link-btn" onclick="copyLink('${url}')">⧉ نسخ</button></div>`;
+            // 2. اللينكات العادية (بس لو مش جوا وسم a)
+            html = html.replace(/(^|\s)(https?:\/\/[^\s<"]+)/g, function(match, space, url) {
+                return `${space}<div class="link-container"><a href="${url}" target="_blank" class="link-text">🔗 ${url}</a><button class="copy-link-btn" onclick="copyLink('${url}')">⧉ نسخ</button></div>`;
             });
 
-            // 3. تنسيق العناوين والنقط
+            // 3. العناوين
             html = html.replace(/### (.*?)(?=\n|$)/g, '<h3>$1</h3>');
+            
+            // 4. الخط العريض
             html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            
+            // 5. النقاط
             html = html.replace(/^- (.*?)$/gm, '<li>$1</li>');
             html = html.replace(/(<li>.*?<\/li>)/gs, '<ul>$1</ul>');
             
-            // 4. تحويل السطور الجديدة لمسافات
+            // 6. السطور الجديدة
             html = html.replace(/\n/g, '<br>');
 
             return `<div class="normal-text">${html}</div>`;
@@ -107,12 +113,10 @@
             });
         }
 
-        // سرعة الكتابة 100ms
         async function typeWriter(element, text, speed = 100) {
             element.innerHTML = '';
             const lines = text.split('\n');
             let currentText = '';
-            
             for (let i = 0; i < lines.length; i++) {
                 currentText += lines[i] + '\n';
                 element.innerHTML = parseMarkdown(currentText);
