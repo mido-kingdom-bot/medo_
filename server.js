@@ -11,112 +11,115 @@ app.use(express.static(__dirname));
 
 app.get('/ping', (req, res) => res.send('ALIVE'));
 
-async function pureSearch(query) {
-    let results = { snippets: [], wiki: "", topSites: [], images: [], videos: [] };
-    
-    // لو المستخدم طلب صورة
-    if (query.includes('ارسم') || query.includes('صورة') || query.includes('صور')) {
-        let cleanQuery = query.replace(/(ارسم|صورة|صور|لي|عن)/g, '').trim();
-        results.images.push(`https://image.pollinations.ai/prompt/${encodeURIComponent(cleanQuery + ', highly detailed, 4k')}?width=1024&height=1024&nologo=true`);
-        return results; 
-    }
-
-    // لو المستخدم طلب فيديو
-    if (query.includes('فيديو') || query.includes('يوتيوب')) {
-        let cleanQuery = query.replace(/(فيديو|يوتيوب|لي|عن|جيب)/g, '').trim();
-        results.videos.push(`https://www.youtube.com/results?search_query=${encodeURIComponent(cleanQuery)}`);
-    }
-
+// 1. البحث في DuckDuckGo
+async function searchDDG(query) {
+    let results = { snippets: [], links: [] };
     try {
         const searchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}&kp=-2`;
         const { data } = await axios.get(searchUrl, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }, timeout: 5000 });
         const $ = cheerio.load(data);
         
-        $('.result__snippet').slice(0, 4).each((i, el) => { 
-            results.snippets.push($(el).text().replace(/\s+/g, ' ').trim()); 
+        $('.result__snippet').slice(0, 5).each((i, el) => { 
+            results.snippets.push($(el).text().trim()); 
         });
         
-        let links = [];
-        $('.result__a').slice(0, 3).each((i, el) => {
+        $('.result__a').slice(0, 4).each((i, el) => {
             let href = $(el).attr('href');
             let title = $(el).text().trim();
             if (href && href.includes('uddg=')) {
                 try { href = decodeURIComponent(href.split('uddg=')[1].split('&')[0]); } catch(e) {}
             }
-            if (href && href.startsWith('http')) links.push({ title, url: href });
+            if (href && href.startsWith('http')) results.links.push({ title, url: href });
         });
-        
-        results.topSites = links;
-
     } catch (e) {}
-    
-    try {
-        const wikiUrl = `https://ar.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&utf8=&format=json`;
-        const wikiRes = await axios.get(wikiUrl, { timeout: 4000 });
-        if (wikiRes.data.query.search.length > 0) results.wiki = wikiRes.data.query.search[0].snippet.replace(/<[^>]+>/g, '');
-    } catch(e) {}
-    
     return results;
 }
 
+// 2. البحث في Bing (احتياطي)
+async function searchBing(query) {
+    let results = { snippets: [], links: [] };
+    try {
+        const searchUrl = `https://www.bing.com/search?q=${encodeURIComponent(query)}&adlt=off`;
+        const { data } = await axios.get(searchUrl, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }, timeout: 5000 });
+        const $ = cheerio.load(data);
+        
+        $('.b_algo').slice(0, 4).each((i, el) => {
+            let s = $(el).find('.b_caption p').text().trim() || $(el).find('p').text().trim();
+            if (s && !s.includes('Comic Sans') && !s.includes('Achewood') && s.length > 20) {
+                results.snippets.push(s);
+            }
+            let linkEl = $(el).find('h2 a');
+            let url = linkEl.attr('href');
+            let title = linkEl.text().trim();
+            if (url && url.startsWith('http')) results.links.push({ title, url });
+        });
+    } catch (e) {}
+    return results;
+}
+
+// 3. البحث في ويكيبيديا
+async function getWikipedia(query) {
+    try {
+        const wikiUrl = `https://ar.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&utf8=&format=json`;
+        const wikiRes = await axios.get(wikiUrl, { timeout: 4000 });
+        if (wikiRes.data.query.search.length > 0) {
+            return wikiRes.data.query.search[0].snippet.replace(/<[^>]+>/g, '');
+        }
+    } catch(e) {}
+    return null;
+}
+
 app.post('/ask', async (req, res) => {
-    let { prompt, history } = req.body;
+    let { prompt } = req.body;
     if (!prompt) return res.status(400).json({ error: "مفيش سؤال!" });
 
-    // الترحيب الذكي
-    const greetings = ['ازيك', 'إزيك', 'ازايك', 'عامل ايه', 'اخبارك', 'صباح الخير', 'مساء الخير', 'مين انت', 'انت مين'];
-    const promptLower = prompt.toLowerCase().trim();
-    if (greetings.some(g => promptLower.includes(g))) {
-        return res.json({ final: `### 🤖 M.E Search\n\nأهلاً بك يا محمد! أنا بخير الحمد لله. أنا **محرك البحث الخاص بك**. اكتب أي حاجة عايز تدور عليها وأنا هجبلك المعلومات واللينكات.` });
+    // 1. طلب صورة
+    if (/ارسم|صورة|صور|رسمة/i.test(prompt)) {
+        let cleanQ = prompt.replace(/(ارسم|صورة|صور|لي|عن|رسمة)/gi, '').trim();
+        let imgUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(cleanQ + ', highly detailed, 4k')}?width=1024&height=1024&nologo=true`;
+        return res.json({ final: `### 🎨 الصورة اللي طلبتها:\n\n![صورة](${imgUrl})\n\n[⬇️ تحميل الصورة](${imgUrl})` });
     }
 
-    // ذاكرة المحادثة
-    let finalQuery = prompt;
-    if (prompt.length < 15 && history && history.length > 0) {
-        const lastUserMsg = history.slice().reverse().find(m => m.role === 'user');
-        if (lastUserMsg && !greetings.some(g => lastUserMsg.content.includes(g))) {
-            finalQuery = `${lastUserMsg.content} ${prompt}`; 
-        }
+    // 2. تنظيف الكلام للبحث
+    let cleanQuery = prompt.replace(/(هات|عايز|موقع|تطبيق|لي|عن|ابحث|قوليلي|ممكن|جيب|وريني|ازاي|إزاي)/gi, '').trim();
+    if (!cleanQuery || cleanQuery.length < 2) cleanQuery = prompt;
+
+    // 3. البحث (دك دك جو -> بينج -> ويكيبيديا)
+    let searchData = await searchDDG(cleanQuery);
+    let wikiData = await getWikipedia(cleanQuery);
+
+    if (searchData.snippets.length === 0) {
+        searchData = await searchBing(cleanQuery);
     }
 
-    // تنظيف البحث
-    const stopWords = /(ابحث لي عن|ابحث عن|عايز اعرف|قوليلي|هات لي|من فضلك|لو سمحت|ممكن|هات|جيب|عايز|موقع|تطبيق)/gi;
-    finalQuery = finalQuery.replace(stopWords, '').trim();
-    if (!finalQuery) finalQuery = prompt;
+    // 4. تنسيق النتيجة
+    let finalAnswer = `### 🌐 نتائج البحث عن: "${cleanQuery}"\n\n`;
 
-    // البحث الفعلي
-    const searchData = await pureSearch(finalQuery);
-    let finalAnswer = "";
-
-    if (searchData.images.length > 0) {
-        finalAnswer = `### 🎨 الصورة اللي طلبتها:\n\n![صورة](${searchData.images[0]})\n\n[⬇️ تحميل الصورة](${searchData.images[0]})`;
-        return res.json({ final: finalAnswer, isImage: true });
+    if (wikiData) {
+        finalAnswer += `**📖 من ويكيبيديا:**\n${wikiData}\n\n`;
     }
 
-    finalAnswer = `### 🌐 نتائج البحث عن: ${finalQuery}\n\n`;
-    
-    if (searchData.wiki) finalAnswer += `**📖 من ويكيبيديا:**\n${searchData.wiki}\n\n`;
-    
     if (searchData.snippets.length > 0) {
-        finalAnswer += `**📌 معلومات:**\n\n`;
-        searchData.snippets.forEach((snip) => finalAnswer += `- ${snip}\n\n`);
-    }
-    
-    if (searchData.topSites.length > 0) {
-        finalAnswer += `**🔗 أهم المصادر:**\n\n`;
-        searchData.topSites.forEach((site) => finalAnswer += `- [${site.title}](${site.url})\n`);
+        finalAnswer += `**📌 معلومات من الويب:**\n\n`;
+        searchData.snippets.forEach((snip, index) => {
+            finalAnswer += `[${index + 1}] ${snip}\n\n`;
+        });
     }
 
-    if (searchData.videos.length > 0) {
-        finalAnswer += `\n**🎬 فيديوهات:**\n\n- [اضغط هنا لمشاهدة الفيديوهات](${searchData.videos[0]})\n`;
+    if (searchData.links.length > 0) {
+        finalAnswer += `**🔗 أهم المصادر:**\n\n`;
+        searchData.links.forEach((site) => {
+            finalAnswer += `- [${site.title}](${site.url})\n`;
+        });
     }
-    
-    if (searchData.snippets.length === 0 && !searchData.wiki && searchData.topSites.length === 0) {
-        finalAnswer = "معلش يا محمد، دورت في كل حتة بس مفيش نتايج واضحة.";
+
+    // 5. لو مفيش أي نتايج
+    if (!wikiData && searchData.snippets.length === 0 && searchData.links.length === 0) {
+        finalAnswer = "معلش يا محمد، محرك البحث رجع صفحة فاضية (مفيش نتايج). جرب تسأل بطريقة تانية أو بكلمة أوضح.";
     }
-    
+
     res.json({ final: finalAnswer });
 });
 
 const PORT = 3000;
-app.listen(PORT, () => console.log(`✅ M.E Ultimate Search شغال على http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`✅ M.E Pure Machine Search شغال على http://localhost:${PORT}`));
