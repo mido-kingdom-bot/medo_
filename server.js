@@ -11,30 +11,28 @@ app.use(express.static(__dirname));
 
 app.get('/ping', (req, res) => res.send('ALIVE'));
 
-// دالة البحث في DuckDuckGo
-async function searchDDG(query) {
+// دالة البحث في جوجل (مع حماية من التعليق)
+async function searchGoogle(query) {
     let results = { snippets: [], links: [] };
     try {
         const headers = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' };
-        const { data } = await axios.get(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}&kp=-2`, { headers, timeout: 5000 });
+        // timeout 4000 عشان ميهنجش
+        const { data } = await axios.get(`https://www.google.com/search?q=${encodeURIComponent(query)}&hl=ar&num=5`, { headers, timeout: 4000 });
         const $ = cheerio.load(data);
-        
-        $('.result__snippet').slice(0, 4).each((i, el) => { 
-            results.snippets.push($(el).text().trim()); 
-        });
-        
-        $('.result__a').slice(0, 3).each((i, el) => {
-            let href = $(el).attr('href');
-            if (href && href.includes('uddg=')) { 
-                try { href = decodeURIComponent(href.split('uddg=')[1].split('&')[0]); } catch(e) {} 
-            }
-            if (href && href.startsWith('http')) results.links.push({ title: $(el).text().trim(), url: href });
+        $('.tF2Cxc').each((i, el) => {
+            let snippet = $(el).find('.VwiC3b').text().trim();
+            if (snippet) results.snippets.push(snippet);
+            let linkEl = $(el).find('a');
+            let url = linkEl.attr('href');
+            let title = $(el).find('h3').text().trim();
+            if (url && url.startsWith('/url?q=')) url = url.split('/url?q=')[1].split('&')[0];
+            if (url && url.startsWith('http') && title) results.links.push({ title, url });
         });
     } catch(e) {}
     return results;
 }
 
-// دالة البحث في Bing (كاحتياطي)
+// دالة البحث في Bing
 function decodeBingUrl(bingUrl) {
     try {
         if (bingUrl.includes('&u=a1')) {
@@ -50,11 +48,11 @@ async function searchBing(query) {
     let results = { snippets: [], links: [] };
     try {
         const headers = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' };
-        const { data } = await axios.get(`https://www.bing.com/search?q=${encodeURIComponent(query)}&adlt=off`, { headers, timeout: 5000 });
+        const { data } = await axios.get(`https://www.bing.com/search?q=${encodeURIComponent(query)}&adlt=off`, { headers, timeout: 4000 });
         const $ = cheerio.load(data);
         $('.b_algo').slice(0, 4).each((i, el) => {
             let s = $(el).find('.b_caption p').text().trim() || $(el).find('p').text().trim();
-            // فلتر الكلام الإنجليزي العشوائي
+            // فلتر الكلام الغبي (Achewood/Comic Sans)
             if (s && !s.includes('Comic Sans') && !s.includes('Achewood') && s.length > 20) {
                 results.snippets.push(s);
             }
@@ -66,14 +64,13 @@ async function searchBing(query) {
     return results;
 }
 
-// الذكاء الاصطناعي للتنسيق
+// الذكاء الاصطناعي
 async function askAI(messages) {
     try {
-        const res = await axios.post("https://text.pollinations.ai/openai", { model: "mistral", messages, max_tokens: 2048 }, { timeout: 8000 });
+        // timeout 6000 عشان ميهنجش
+        const res = await axios.post("https://text.pollinations.ai/openai", { model: "mistral", messages, max_tokens: 1500 }, { timeout: 6000 });
         return res.data.choices[0].message.content;
-    } catch(e) {
-        return null; 
-    }
+    } catch(e) { return null; }
 }
 
 app.post('/ask', async (req, res) => {
@@ -83,10 +80,10 @@ app.post('/ask', async (req, res) => {
     // 1. الترحيب الذكي
     const greetings = ['ازيك', 'إزيك', 'هاي', 'اهلا', 'أهلا', 'hello', 'hi', 'صباح الخير', 'مساء الخير', 'اخبارك', 'عامل'];
     if (greetings.some(g => prompt.includes(g)) && prompt.length < 25) {
-        return res.json({ final: `### 🤖 M.E Assistant\n\nأهلاً بك يا محمد! أنا بخير الحمد لله. أنا مساعدك الذكي، ممكن أبحثلك عن أي حاجة في الويب أو أجيبلك أكواد. عايز تعمل إيه النهاردة؟` });
+        return res.json({ final: `### 🤖 M.E Assistant\n\nأهلاً بك يا محمد! أنا بخير الحمد لله. عايز تبحث عن إيه النهاردة؟` });
     }
 
-    // 2. الطلبات الممنوعة (عشان ميعملش "جاري البحث" ويتعلق)
+    // 2. الطلبات الممنوعة
     if (/سكس|اباحي|عاري|xxx|porn|نيك/i.test(prompt)) {
         return res.json({ final: `معلش يا محمد، محرك البحث والذكاء الاصطناعي بيرفضوا يرجعوا نتايج للمواضيع دي بسبب سياسات الأمان. جرب تسأل عن أي حاجة تانية مفيدة.` });
     }
@@ -102,19 +99,18 @@ app.post('/ask', async (req, res) => {
     let cleanQuery = prompt.replace(/(هات|عايز|موقع|تطبيق|لي|عن|ابحث|قوليلي|ممكن|جيب|وريني|ازاي|إزاي)/gi, '').trim();
     if (!cleanQuery || cleanQuery.length < 2) cleanQuery = prompt;
 
-    // بنجرب DuckDuckGo الأول
-    let searchData = await searchDDG(cleanQuery);
-    // لو مفيش نتايج، بنجرب Bing
+    // البحث بجوجل الأول، وبعدين بينج
+    let searchData = await searchGoogle(cleanQuery);
     if (searchData.snippets.length === 0) {
         searchData = await searchBing(cleanQuery);
     }
 
     // لو مفيش نتايج خالص
     if (searchData.snippets.length === 0 && searchData.links.length === 0) {
-        return res.json({ final: `معلش يا محمد، دورت على "${cleanQuery}" في الويب بس مفيش نتايج واضحة. جرب تكتب سؤالك بطريقة تانية.` });
+        return res.json({ final: `معلش يا محمد، دورت على "${cleanQuery}" في الويب بس مفيش نتايج واضحة. جرب تكتب بطريقة تانية.` });
     }
 
-    // 5. تنسيق النتايج بالذكاء الاصطناعي
+    // 5. التنسيق
     let context = `السؤال: ${prompt}\nالمعلومات:\n`;
     searchData.snippets.forEach(s => context += `- ${s}\n`);
     if (searchData.links.length > 0) {
@@ -123,11 +119,11 @@ app.post('/ask', async (req, res) => {
     }
 
     let finalAnswer = await askAI([
-        { role: "system", content: "أنت المساعد M.E. لخص المعلومات دي بالمصري في نقاط منظمة. ممنوع تماماً تكتب أي كلام إنجليزي في الرد." },
+        { role: "system", content: "أنت المساعد M.E. لخص المعلومات دي بالمصري في نقاط منظمة. لو لقيت كلام إنجليزي ملوش لازمة أو ملوش علاقة بالسؤال، اتجاهله تماماً. ممنوع الإنجليزي في الرد." },
         { role: "user", content: context }
     ]);
 
-    // 6. لو الـ AI فشل أو رفض، نعرض النتايج الخام بالمصري
+    // 6. لو الـ AI فشل، نعرض النتايج الخام
     if (!finalAnswer) {
         finalAnswer = `### 🌐 نتائج البحث عن: ${cleanQuery}\n\n`;
         searchData.snippets.forEach(s => finalAnswer += `- ${s}\n\n`);
@@ -141,4 +137,4 @@ app.post('/ask', async (req, res) => {
 });
 
 const PORT = 3000;
-app.listen(PORT, () => console.log(`✅ M.E Stable Search شغال على http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`✅ M.E Mixed Search شغال على http://localhost:${PORT}`));
