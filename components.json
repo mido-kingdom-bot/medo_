@@ -1,0 +1,15 @@
+{
+  "python": {
+    "imports": "import socket\nimport requests\nimport hashlib\nimport os\n",
+    "port_scanner_logic": "def scan(target, port):\n    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)\n    s.settimeout(1)\n    try:\n        s.connect((target, port))\n        print(f'[+] Port {port} is OPEN')\n    except:\n        pass\n    finally:\n        s.close()\n",
+    "hash_logic": "def hash_password(pass_str):\n    return hashlib.sha256(pass_str.encode()).hexdigest()\n",
+    "fetch_url": "def fetch_data(url):\n    res = requests.get(url)\n    return res.text\n",
+    "main_scan": "if __name__ == '__main__':\n    target = input('Enter Target IP: ')\n    scan(target, 80)\n"
+  },
+  "javascript": {
+    "imports": "const net = require('net');\nconst crypto = require('crypto');\nconst fs = require('fs');\n",
+    "port_scanner_logic": "function scan(target, port) {\n    const socket = new net.Socket();\n    socket.setTimeout(1000);\n    socket.on('connect', () => { console.log(`[+] Port ${port} is OPEN`); socket.destroy(); });\n    socket.on('timeout', () => { socket.destroy(); });\n    socket.on('error', () => {});\n    socket.connect(port, target);\n}\n",
+    "hash_logic": "function hashPassword(pass) {\n    return crypto.createHash('sha256').update(pass).digest('hex');\n}\n",
+    "main_scan": "const target = '127.0.0.1';\n[21, 22, 80, 443].forEach(port => scan(target, port));\n"
+  }
+}

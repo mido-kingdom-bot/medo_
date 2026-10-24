@@ -1,116 +1,124 @@
 const express = require('express');
 const axios = require('axios');
-const cors = require('cors');
 const cheerio = require('cheerio');
+const session = require('express-session');
+const fs = require('fs');
 require('dotenv').config();
 
 const app = express();
-app.use(cors());
 app.use(express.json());
 app.use(express.static(__dirname));
+app.use(session({ secret: 'm-e-secret', resave: false, saveUninitialized: true }));
 
-app.get('/ping', (req, res) => res.send('ALIVE'));
+// 🚨 كلمة السر بتاعتك للتحكم في البوت (غيرها لأي حاجة إنت عايزها)
+const ADMIN_SECRET = "M_E_BOSS_2026"; 
 
-// 1. محرك البحث الخام
-async function searchWeb(query) {
-    let results = { snippets: [], links: [] };
+let knowledgeBase = [];
+try { knowledgeBase = JSON.parse(fs.readFileSync('./knowledge.json', 'utf8')); } catch(e) {}
+let components = {};
+try { components = JSON.parse(fs.readFileSync('./components.json', 'utf8')); } catch(e) {}
+
+console.log(`🧠 تم تحميل ${knowledgeBase.length} معلومة.`);
+
+// دالة التعلم الذاتي
+async function learnFromInternet(topic) {
     try {
-        const searchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}&kp=-2`;
-        const { data } = await axios.get(searchUrl, { headers: { 'User-Agent': 'Mozilla/5.0' }, timeout: 5000 });
+        let query = encodeURIComponent(topic + " cybersecurity tutorial coding");
+        const { data } = await axios.get(`https://html.duckduckgo.com/html/?q=${query}`, { headers: { 'User-Agent': 'Mozilla/5.0' }, timeout: 8000 });
         const $ = cheerio.load(data);
+        let learned = [];
+        $('.result__snippet').slice(0, 2).each((i, el) => { let text = $(el).text().trim(); if (text.length > 40) learned.push(text); });
         
-        $('.result__snippet').slice(0, 5).each((i, el) => { 
-            results.snippets.push($(el).text().trim()); 
-        });
-        
-        $('.result__a').slice(0, 4).each((i, el) => {
-            let href = $(el).attr('href');
-            let title = $(el).text().trim();
-            if (href && href.includes('uddg=')) {
-                try { href = decodeURIComponent(href.split('uddg=')[1].split('&')[0]); } catch(e) {}
-            }
-            if (href && href.startsWith('http') && title) results.links.push({ title, url: href });
-        });
-    } catch (e) {}
-    
-    // لو مفيش نتايج، نجرب Bing
-    if (results.snippets.length === 0) {
-        try {
-            const searchUrl = `https://www.bing.com/search?q=${encodeURIComponent(query)}&adlt=off`;
-            const { data } = await axios.get(searchUrl, { headers: { 'User-Agent': 'Mozilla/5.0' }, timeout: 5000 });
-            const $ = cheerio.load(data);
-            $('.b_algo').slice(0, 4).each((i, el) => {
-                let s = $(el).find('.b_caption p').text().trim() || $(el).find('p').text().trim();
-                if (s && s.length > 20) results.snippets.push(s);
-                let linkEl = $(el).find('h2 a');
-                let url = linkEl.attr('href');
-                let title = linkEl.text().trim();
-                if (url && url.startsWith('http') && title) results.links.push({ title, url });
-            });
-        } catch (e) {}
-    }
-    return results;
+        if (learned.length > 0) {
+            knowledgeBase.push({ title: `متعلم ذاتياً: ${topic}`, keywords: `${topic} security coding`, content: learned.join('\n\n') });
+            fs.writeFileSync('./knowledge.json', JSON.stringify(knowledgeBase, null, 2));
+            return true;
+        }
+        return false;
+    } catch (e) { return false; }
 }
 
-// 2. نظام الفهم البرمجي (Rule-Based System)
+// مسارات التسجيل
+const usersFile = './users.json';
+app.post('/register', (req, res) => { 
+    let users = fs.existsSync(usersFile) ? JSON.parse(fs.readFileSync(usersFile)) : [];
+    users.push({ username: req.body.username, password: req.body.password }); 
+    fs.writeFileSync(usersFile, JSON.stringify(users));
+    req.session.user = req.body.username; res.json({ success: true });
+});
+app.post('/login', (req, res) => { 
+    let users = fs.existsSync(usersFile) ? JSON.parse(fs.readFileSync(usersFile)) : [];
+    let user = users.find(u => u.username === req.body.username && u.password === req.body.password);
+    if(user) { req.session.user = user.username; res.json({ success: true }); } else res.json({ success: false });
+});
+
+// 🚨 الشات وغرفة التحكم
 app.post('/ask', async (req, res) => {
     let { prompt } = req.body;
-    if (!prompt) return res.status(400).json({ error: "مفيش سؤال!" });
+    if (!req.session.user) return res.status(401).json({ final: "سجل دخول الأول." });
 
-    let finalAnswer = "";
-    let cleanQuery = prompt.replace(/(هات|عايز|موقع|تطبيق|لي|عن|ابحث|قوليلي|ممكن|جيب|وريني)/gi, '').trim();
-    if (!cleanQuery) cleanQuery = prompt;
+    // ==========================================
+    // 👑 غرفة التحكم (God Mode) - للمدير بس
+    // ==========================================
+    if (prompt.startsWith('#admin')) {
+        let args = prompt.split(' ');
+        let providedSecret = args[1];
 
-    // 🚨 القاعدة 1: لو طلب صورة
-    if (/ارسم|صورة|صور|رسمة/i.test(prompt)) {
-        let imgQuery = prompt.replace(/(ارسم|صورة|صور|لي|عن|رسمة)/gi, '').trim();
-        let imgUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(imgQuery + ', highly detailed, 4k')}?width=1024&height=1024&nologo=true`;
-        return res.json({ final: `### 🎨 الصورة اللي طلبتها:\n\n![صورة](${imgUrl})\n\n[⬇️ تحميل الصورة](${imgUrl})` });
-    }
-
-    // 🚨 القاعدة 2: لو طلب كود
-    if (/كود|سكريبت|برمجة|python|javascript|html|c\+\+|java/i.test(prompt)) {
-        let codeSearch = `code example ${cleanQuery}`;
-        let searchData = await searchWeb(codeSearch);
-        
-        finalAnswer = `### 💻 أكواد جاهزة عن: "${cleanQuery}"\n\n`;
-        if (searchData.snippets.length > 0) {
-            searchData.snippets.forEach(s => finalAnswer += `- ${s}\n\n`);
+        // لو كلمة السر غلط
+        if (providedSecret !== ADMIN_SECRET) {
+            return res.json({ final: "❌ كلمة السر غلط! إنت مش المدير." });
         }
-        if (searchData.links.length > 0) {
-            finalAnswer += `**🔗 مصادر الأكواد:**\n`;
-            searchData.links.forEach(l => finalAnswer += `- [${l.title}](${l.url})\n`);
+
+        let command = args[2]; // learn أو addcode
+
+        // أمر التعلم الذاتي المباشر
+        if (command === 'learn') {
+            let topic = args.slice(3).join(' ');
+            if (!topic) return res.json({ final: "اكتب الموضوع بعد الأمر. مثال: #admin M_E_BOSS_2026 learn SQL Injection" });
+            
+            let success = await learnFromInternet(topic);
+            if (success) return res.json({ final: `👑 **يا مدير!** أنا اتعلمت معلومات جديدة عن "${topic}" وحفظتها في دماغي.` });
+            else return res.json({ final: `❌ يا مدير، مش لاقي معلومات عن "${topic}".` });
         }
-        if (searchData.snippets.length === 0 && searchData.links.length === 0) {
-            finalAnswer = "معلش يا محمد، دورت على أكواد بس مفيش نتايج.";
+
+        // أمر إضافة كود جديد للمخزن
+        if (command === 'addcode') {
+            let lang = args[3];
+            let name = args[4];
+            // الكود هيبقى كل الكلام اللي بعد اسم الكود
+            let codeString = prompt.split(args[4])[1].trim(); 
+
+            if (!lang || !name || !codeString) return res.json({ final: "الاستخدام: #admin [SECRET] addcode [python/js] [اسم الكود] [الكود نفسه]" });
+
+            if (!components[lang]) components[lang] = {};
+            components[lang][name] = codeString;
+            fs.writeFileSync('./components.json', JSON.stringify(components, null, 2));
+            
+            return res.json({ final: `👑 **يا مدير!** أضفت كود "${name}" للغة ${lang} في مخزن قطع الغيار بتاعي.` });
         }
-        return res.json({ final: finalAnswer });
+
+        return res.json({ final: "👑 أوامر المدير المتاحة: learn أو addcode" });
     }
 
-    // 🚨 القاعدة 3: الكلام العادي (ترحيب أو كلام بسيط)
-    const greetings = ['ازيك', 'إزيك', 'هاي', 'اهلا', 'أهلا', 'hello', 'hi', 'صباح الخير', 'مساء الخير', 'اخبارك', 'عامل'];
-    if (greetings.some(g => prompt.includes(g)) && prompt.length < 20) {
-        return res.json({ final: `### 🤖 M.E Assistant\n\nأهلاً بك يا محمد! أنا مساعدك الذكي. أنا مكنة بحث بتفهمك من غير قيود. عايز تبحث عن إيه النهاردة؟` });
+    // ==========================================
+    // الأوامر العادية (للمستخدمين)
+    // ==========================================
+    let p = prompt.toLowerCase();
+
+    // التعلم الذاتي العادي
+    if (p.includes('درب نفسك')) {
+        let topics = ["Python socket programming", "XSS prevention", "Linux security", "SQL injection"];
+        let count = 0;
+        for (let t of topics) { if (await learnFromInternet(t)) count++; await new Promise(r => setTimeout(r, 1000)); }
+        return res.json({ final: `🧠 تم التدريب! جمعت معلومات عن ${count} مواضيع جديدة من النت.` });
     }
 
-    // 🚨 القاعدة 4: البحث العادي (لو مفيش قاعدة تانية اشتغلت)
-    let searchData = await searchWeb(cleanQuery);
-    
-    finalAnswer = `### 🌐 نتائج البحث عن: "${cleanQuery}"\n\n`;
-    if (searchData.snippets.length > 0) {
-        finalAnswer += `**📌 المعلومات:**\n\n`;
-        searchData.snippets.forEach((snip, index) => finalAnswer += `[${index + 1}] ${snip}\n\n`);
-    }
-    if (searchData.links.length > 0) {
-        finalAnswer += `**🔗 المواقع:**\n\n`;
-        searchData.links.forEach((site) => finalAnswer += `- [${site.title}](${site.url})\n`);
-    }
-    if (searchData.snippets.length === 0 && searchData.links.length === 0) {
-        finalAnswer = "معلش يا محمد، محرك البحث رجع صفحة فاضية (مفيش نتايج). جرب تسأل بكلمة تانية.";
-    }
+    // البحث في العقل
+    let match = knowledgeBase.find(item => item.keywords.toLowerCase().includes(p) || item.title.toLowerCase().includes(p));
+    if (match) return res.json({ final: `🧠 **${match.title}**\n${match.content}` });
 
-    res.json({ final: finalAnswer });
+    res.json({ final: "مش لاقي المعلومة دي. اطلب من المدير يدربني أو يضيفلي أكواد!" });
 });
 
 const PORT = 3000;
-app.listen(PORT, () => console.log(`✅ M.E Smart Rule-Based Search شغال على http://localhost:${PORT}`));
+app.listen(PORT, '0.0.0.0', () => console.log(`✅ M.E God Mode Server شغال!`));

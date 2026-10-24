@@ -1,0 +1,17 @@
+{
+  "python": {
+    "port_scanner": "import socket\n\ndef scan(host, ports):\n    for port in ports:\n        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)\n        s.settimeout(0.5)\n        try:\n            s.connect((host, port))\n            print(f'[+] Port {port} is OPEN')\n        except:\n            pass\n        finally:\n            s.close()\n\nif __name__ == '__main__':\n    target = input('Enter Target IP: ')\n    scan(target, [21, 22, 80, 443, 8080])",
+    "hash_cracker": "import hashlib\n\ndef crack_hash(hash_to_crack, wordlist):\n    with open(wordlist, 'r') as file:\n        for line in file:\n            word = line.strip()\n            hashed_word = hashlib.md5(word.encode()).hexdigest()\n            if hashed_word == hash_to_crack:\n                print(f'[+] Password Found: {word}')\n                return\n    print('[-] Password not found.')\n\nif __name__ == '__main__':\n    crack_hash('5d41402abc4b2a76b9719d911017c592', 'passwords.txt')",
+    "web_scraper": "import requests\nfrom bs4 import BeautifulSoup\n\ndef scrape(url):\n    res = requests.get(url)\n    soup = BeautifulSoup(res.text, 'html.parser')\n    for link in soup.find_all('a'):\n        print(link.get('href'))\n\nscrape('https://example.com')"
+  },
+  "javascript": {
+    "port_scanner": "const net = require('net');\n\nasync function scanPort(host, port) {\n    return new Promise((resolve) => {\n        const socket = new net.Socket();\n        socket.setTimeout(1000);\n        socket.on('connect', () => { socket.destroy(); resolve(true); });\n        socket.on('timeout', () => { socket.destroy(); resolve(false); });\n        socket.on('error', () => { resolve(false); });\n        socket.connect(port, host);\n    });\n}\n\n(async () => {\n    const target = '127.0.0.1';\n    const ports = [21, 22, 80, 443];\n    for (let port of ports) {\n        if (await scanPort(target, port)) console.log(`[+] Port ${port} is OPEN`);\n    }\n})();",
+    "hash_cracker": "const crypto = require('crypto');\n\nfunction crackHash(targetHash, wordlist) {\n    for (let word of wordlist) {\n        const hash = crypto.createHash('md5').update(word).digest('hex');\n        if (hash === targetHash) {\n            console.log(`[+] Password Found: ${word}`);\n            return;\n        }\n    }\n    console.log('[-] Not found');\n}\n\ncrackHash('5d41402abc4b2a76b9719d911017c592', ['admin', '123456', 'hello']);",
+    "web_scraper": "const axios = require('axios');\nconst cheerio = require('cheerio');\n\nasync function scrape(url) {\n    const { data } = await axios.get(url);\n    const $ = cheerio.load(data);\n    $('a').each((i, link) => {\n        console.log($(link).attr('href'));\n    });\n}\n\nscrape('https://example.com');"
+  },
+  "bash": {
+    "port_scanner": "#!/bin/bash\ntarget=$1\nif [ -z \"$target\" ]; then\n  echo \"Usage: ./scan.sh <IP>\"\n  exit 1\nfi\necho \"Scanning $target...\"\nnmap -p 21,22,80,443 $target",
+    "file_finder": "#!/bin/bash\n# البحث عن ملفات بصلاحيات معينة (SUID)\nfind / -perm -4000 -type f 2>/dev/null",
+    "network_info": "#!/bin/bash\n# عرض معلومات الشبكة والاتصالات المفتوحة\nnetstat -tuln\necho \"---\"\nip addr show"
+  }
+}
