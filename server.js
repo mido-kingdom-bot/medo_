@@ -11,7 +11,7 @@ app.use(express.static(__dirname));
 
 app.get('/ping', (req, res) => res.send('ALIVE'));
 
-// 1. دالة البحث في جوجل الحقيقي
+// 1. دالة البحث في جوجل
 async function searchGoogle(query) {
     let results = { snippets: [], links: [] };
     try {
@@ -22,7 +22,6 @@ async function searchGoogle(query) {
         const { data } = await axios.get(`https://www.google.com/search?q=${encodeURIComponent(query)}&hl=ar&num=5`, { headers, timeout: 6000 });
         const $ = cheerio.load(data);
         
-        // بنسحب النتايج من هيكل جوجل
         $('.tF2Cxc').each((i, el) => {
             let snippet = $(el).find('.VwiC3b').text().trim();
             if (snippet) results.snippets.push(snippet);
@@ -42,7 +41,7 @@ async function searchGoogle(query) {
     return results;
 }
 
-// 2. دالة البحث في Bing (كاحتياطي)
+// 2. دالة البحث في Bing
 function decodeBingUrl(bingUrl) {
     try {
         if (bingUrl.includes('&u=a1')) {
@@ -71,13 +70,17 @@ async function searchBing(query) {
     return results;
 }
 
-// 3. الذكاء الاصطناعي
+// 3. الذكاء الاصطناعي (موديل OpenAI للترجمة والتنسيق)
 async function askAI(messages) {
     try {
-        const res = await axios.post("https://text.pollinations.ai/openai", { model: "mistral", messages, max_tokens: 2048 });
+        const res = await axios.post("https://text.pollinations.ai/openai", { 
+            model: "openai", // موديل أقوى في الترجمة والتنسيق
+            messages: messages, 
+            max_tokens: 2048 
+        });
         return res.data.choices[0].message.content;
     } catch(e) {
-        return null; // لو وقع، هنرجع null عشان نتصرف
+        return null; 
     }
 }
 
@@ -85,38 +88,36 @@ app.post('/ask', async (req, res) => {
     let { prompt } = req.body;
     if (!prompt) return res.status(400).json({ error: "مفيش سؤال!" });
 
-    // 🚨 1. الردود السريعة (عشان ميروحش يدور في النت على كلام ملوش لازمة) 🚨
+    // الردود السريعة
     const greetings = /^(ازيك|إزيك|هاي|اهلا|أهلا|hello|hi|صباح الخير|مساء الخير|اخبارك|عامل ايه|لا|نعم|تمام|ماشي)$/i;
     if (greetings.test(prompt.trim())) {
         return res.json({ final: `### 🤖 M.E Assistant\n\nأهلاً بك يا محمد! أنا بخير الحمد لله. أنا مساعدك الذكي، ممكن أبحثلك عن أي حاجة في الويب أو أجيبلك أكواد. عايز تعمل إيه النهاردة؟` });
     }
 
-    // 2. طلب صورة
+    // طلب صورة
     if (/ارسم|صورة|صور|رسمة/i.test(prompt)) {
         let cleanQ = prompt.replace(/(ارسم|صورة|صور|لي|عن|رسمة)/gi, '').trim();
         let imgUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(cleanQ + ', highly detailed, 4k')}?width=1024&height=1024&nologo=true`;
         return res.json({ final: `### 🎨 الصورة اللي طلبتها:\n\n![صورة](${imgUrl})\n\n[⬇️ تحميل الصورة](${imgUrl})` });
     }
 
-    // 3. البحث (جوجل الأول، ولو فشل بنجرب Bing)
-    let searchData = await searchGoogle(prompt);
+    // 🚨 تنظيف الكلام عشان البحث يطلع صح 🚨
+    let cleanQuery = prompt.replace(/(هات|عايز|موقع|تطبيق|لي|عن|ابحث|قوليلي|ممكن|جيب|وريني|ازاي|إزاي)/gi, '').trim();
+    if (!cleanQuery || cleanQuery.length < 2) cleanQuery = prompt; // لو الكلام كله اتشال، نرجع للأصل
+
+    // البحث (جوجل الأول، ولو فشل بنجرب Bing)
+    let searchData = await searchGoogle(cleanQuery);
     if (searchData.snippets.length === 0) {
-        searchData = await searchBing(prompt);
+        searchData = await searchBing(cleanQuery);
     }
 
-    // 4. لو مفيش نتايج خالص
+    // لو مفيش نتايج خالص
     if (searchData.snippets.length === 0 && searchData.links.length === 0) {
-        // بنجرب نسأل الذكاء الاصطناعي من دماغه
-        const aiRes = await askAI([
-            { role: "system", content: "أنت مساعد ذكي. رد على المستخدم بالمصري." },
-            { role: "user", content: prompt }
-        ]);
-        if (aiRes) return res.json({ final: aiRes });
-        return res.json({ final: "معلش يا محمد، محرك البحث رفض يرجع نتايج للسؤال ده، ومقدرتش أرد من دماغي. جرب تسأل عن حاجة تانية." });
+        return res.json({ final: `معلش يا محمد، دورت على "${cleanQuery}" في الويب بس محرك البحث رفض يرجع نتايج واضحة. جرب تسأل بطريقة أوضح أو عن حاجة تانية.` });
     }
 
-    // 5. تنسيق النتايج
-    let context = `السؤال: ${prompt}\n\nالمعلومات من البحث:\n`;
+    // تنسيق النتايج
+    let context = `السؤال الأصلي: ${prompt}\nكلمة البحث: ${cleanQuery}\n\nالمعلومات من البحث:\n`;
     searchData.snippets.forEach(s => context += `- ${s}\n`);
     if (searchData.links.length > 0) {
         context += `\nالروابط:\n`;
@@ -124,22 +125,17 @@ app.post('/ask', async (req, res) => {
     }
 
     let finalAnswer = await askAI([
-        { role: "system", content: "أنت المساعد M.E. لخص المعلومات دي بالمصري بشكل منظم ومفيد. ممنوع ترد بأي كلام إنجليزي." },
+        { role: "system", content: "أنت المساعد M.E. لخص المعلومات دي بالمصري بشكل منظم ومفيد جداً. ممنوع تماماً تكتب أي حرف إنجليزي في الرد. ترجم كل حاجة للعربية. لو فيه معلومة ملوش لازمة أو إعلانات، تجاهلها." },
         { role: "user", content: context }
     ]);
 
-    // لو الـ AI وقع، هنرجع النتايج الخام
+    // 🚨 لو الذكاء الاصطناعي فشل، منعرضش الإنجليزي 🚨
     if (!finalAnswer) {
-        finalAnswer = `### 🌐 نتائج البحث عن: ${prompt}\n\n`;
-        searchData.snippets.forEach(s => finalAnswer += `- ${s}\n\n`);
-        if(searchData.links.length > 0) {
-            finalAnswer += `**🔗 روابط مهمة:**\n`;
-            searchData.links.forEach(l => finalAnswer += `- [${l.title}](${l.url})\n`);
-        }
+        finalAnswer = `معلش يا محمد، محرك البحث رجع نتايج إنجليزية ملخبطة ومقدرتش أترجمها. جرب تسأل بطريقة تانية.`;
     }
 
     res.json({ final: finalAnswer });
 });
 
 const PORT = 3000;
-app.listen(PORT, () => console.log(`✅ M.E Google Search شغال على http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`✅ M.E Clean Search شغال على http://localhost:${PORT}`));
