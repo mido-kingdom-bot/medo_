@@ -12,13 +12,6 @@
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Cairo', sans-serif; -webkit-tap-highlight-color: transparent; }
         body { background: var(--bg); color: var(--text); display: flex; flex-direction: column; height: 100dvh; overflow: hidden;}
         
-        /* التحديث */
-        #update-modal { position: fixed; inset: 0; background: #000; z-index: 99999; display: none; align-items: center; justify-content: center; padding: 20px; flex-direction: column; text-align: center; }
-        #update-modal.show { display: flex; }
-        .update-icon { font-size: 80px; margin-bottom: 20px; }
-        #update-modal h1 { color: var(--neon); margin-bottom: 15px; }
-        .update-btn { background: var(--neon); color: #000; border: none; padding: 15px 40px; border-radius: 50px; font-size: 20px; font-weight: bold; cursor: pointer; }
-
         .header { display: flex; align-items: center; justify-content: space-between; padding: 15px 20px; background: rgba(5,5,10,0.9); border-bottom: 1px solid var(--border); z-index: 100; backdrop-filter: blur(10px);}
         .header-title .main { font-size: 20px; font-weight: 900; background: linear-gradient(90deg, #fff, var(--neon)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         .action-btn { background: transparent; border: 1px solid var(--border); color: var(--neon); padding: 8px 12px; border-radius: 10px; font-size: 14px; cursor: pointer; }
@@ -33,15 +26,21 @@
         .message-content { font-size: 15px; line-height: 1.8; padding: 15px 20px; border-radius: 16px; max-width: 95%; word-wrap: break-word; background: var(--glass); border: 1px solid var(--border); }
         .message-row.user .message-content { background: rgba(0,255,204,0.15); border-color: var(--neon); color: #fff; }
         
+        /* تنسيق الكلام عشان ميبقاش داخل في بعضه */
         .normal-text { margin-bottom: 10px; display: block; }
         .normal-text h3 { color: var(--neon); margin: 15px 0 10px; font-size: 18px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
         .normal-text strong { color: #fff; font-weight: 700; }
         .normal-text ul { padding-right: 20px; margin: 10px 0; }
-        .normal-text li { margin-bottom: 8px; color: #ccc; }
+        .normal-text li { margin-bottom: 8px; color: #ccc; padding-bottom: 8px; border-bottom: 1px dashed rgba(255,255,255,0.05); }
+        .normal-text li:last-child { border-bottom: none; }
+        .normal-text p { margin-bottom: 10px; }
+        .normal-text img { max-width: 100%; border-radius: 10px; margin-top: 10px; border: 1px solid var(--border); }
 
+        /* تنسيق اللينكات عشان تبقى في مربع وزرار نسخ */
         .link-container { display: flex; align-items: center; justify-content: space-between; background: #0a0a0f; border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; margin: 8px 0; gap: 10px; }
         .link-text { color: var(--neon); text-decoration: none; font-size: 13px; word-break: break-all; flex: 1; }
         .copy-link-btn { background: rgba(0, 255, 204, 0.1); border: 1px solid var(--neon); color: var(--neon); padding: 5px 12px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 5px; font-family: 'Cairo', sans-serif; white-space: nowrap;}
+        .copy-link-btn:active { background: var(--neon); color: #000; }
 
         .input-container { position: fixed; bottom: 0; left: 0; right: 0; padding: 15px; background: linear-gradient(180deg, transparent, #000 80%); display: flex; justify-content: center; z-index: 100;}
         .input-box-wrapper { width: 100%; max-width: 820px; display: flex; align-items: center; gap: 8px; background: rgba(20, 25, 35, 0.95); border-radius: 15px; padding: 5px 10px; border: 1px solid var(--border); }
@@ -52,13 +51,6 @@
     </style>
 </head>
 <body>
-    <div id="update-modal">
-        <div class="update-icon">🚀</div>
-        <h1>تحديث مطلوب!</h1>
-        <p>اضغط على الزر أدناه للتحديث.</p>
-        <button class="update-btn" onclick="forceUpdate()">تحديث الآن</button>
-    </div>
-
     <div class="header">
         <button class="action-btn" onclick="createNewChat()">+ جديد</button>
         <div class="header-title"><div class="main">M.E ASSISTANT</div></div>
@@ -81,16 +73,27 @@
         function parseMarkdown(text) {
             if (!text) return '';
             let html = text;
-            // الروابط
+
+            // 1. تحويل اللينكات اللي شكل [title](url) لمربع فيه زرار نسخ
             html = html.replace(/\[(.*?)\]\((.*?)\)/g, function(match, title, url) {
                 return `<div class="link-container"><a href="${url}" target="_blank" class="link-text">🔗 ${title}</a><button class="copy-link-btn" onclick="copyLink('${url}')">⧉ نسخ</button></div>`;
             });
-            // العناوين والنقط
+
+            // 2. تحويل أي لينك عادي http لمربع بردو
+            html = html.replace(/(https?:\/\/[^\s<"]+)/g, function(url) {
+                if(html.includes(`href="${url}"`)) return url; 
+                return `<div class="link-container"><a href="${url}" target="_blank" class="link-text">🔗 ${url}</a><button class="copy-link-btn" onclick="copyLink('${url}')">⧉ نسخ</button></div>`;
+            });
+
+            // 3. تنسيق العناوين والنقط
             html = html.replace(/### (.*?)(?=\n|$)/g, '<h3>$1</h3>');
             html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
             html = html.replace(/^- (.*?)$/gm, '<li>$1</li>');
             html = html.replace(/(<li>.*?<\/li>)/gs, '<ul>$1</ul>');
+            
+            // 4. تحويل السطور الجديدة لمسافات
             html = html.replace(/\n/g, '<br>');
+
             return `<div class="normal-text">${html}</div>`;
         }
 
@@ -104,10 +107,12 @@
             });
         }
 
+        // سرعة الكتابة 100ms
         async function typeWriter(element, text, speed = 100) {
             element.innerHTML = '';
             const lines = text.split('\n');
             let currentText = '';
+            
             for (let i = 0; i < lines.length; i++) {
                 currentText += lines[i] + '\n';
                 element.innerHTML = parseMarkdown(currentText);
@@ -117,11 +122,18 @@
             element.innerHTML = parseMarkdown(text);
         }
 
+        // التخزين (Sessions)
         let sessions = JSON.parse(localStorage.getItem('m.e_sessions')) || [];
         let currentSessionId = localStorage.getItem('m.e_current_session');
-        if (sessions.length === 0) { createNewChat(); } else if (!currentSessionId || !sessions.find(s => s.id === currentSessionId)) { currentSessionId = sessions[0].id; }
+        
+        if (sessions.length === 0) { createNewChat(); } 
+        else if (!currentSessionId || !sessions.find(s => s.id === currentSessionId)) { currentSessionId = sessions[0].id; }
 
-        function saveSessions() { localStorage.setItem('m.e_sessions', JSON.stringify(sessions)); localStorage.setItem('m.e_current_session', currentSessionId); }
+        function saveSessions() {
+            localStorage.setItem('m.e_sessions', JSON.stringify(sessions));
+            localStorage.setItem('m.e_current_session', currentSessionId);
+        }
+
         function getCurrentSession() { return sessions.find(s => s.id === currentSessionId); }
         function createNewChat() {
             const newId = 'chat_' + Date.now();
@@ -129,6 +141,7 @@
             currentSessionId = newId;
             saveSessions(); loadChat();
         }
+        
         function loadChat() {
             const container = document.getElementById('chat-container');
             container.innerHTML = '';
@@ -144,6 +157,7 @@
             });
             document.getElementById('chat-wrapper').scrollTop = document.getElementById('chat-wrapper').scrollHeight;
         }
+        
         function startDictation() {
             if (window.hasOwnProperty('webkitSpeechRecognition')) {
                 var recognition = new webkitSpeechRecognition();
@@ -151,39 +165,54 @@
                 recognition.onresult = function(e) { document.getElementById('prompt').value = e.results[0][0].transcript; recognition.stop(); askAI(); };
             }
         }
+        
         function speakText(text) {
             let cleanText = text.replace(/[*#_`\-]/g, '').replace(/\[.*?\]\(.*?\)/g, '').replace(/https?:\/\/[^\s]+/g, '');
             if ('speechSynthesis' in window) { window.speechSynthesis.cancel(); var msg = new SpeechSynthesisUtterance(cleanText); msg.lang = 'ar-EG'; window.speechSynthesis.speak(msg); }
         }
+        
         async function askAI() {
             const promptInput = document.getElementById('prompt');
             const prompt = promptInput.value.trim();
             if(!prompt) return;
             if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+            
             const session = getCurrentSession();
+            if (session.messages.length === 0) {
+                session.title = prompt.substring(0, 25) + (prompt.length > 25 ? '...' : '');
+                saveSessions();
+            }
             session.messages.push({ role: 'user', content: prompt });
             saveSessions();
+            
             const chatContainer = document.getElementById('chat-container');
             chatContainer.innerHTML += `<div class="message-row user"><div class="message-content">${prompt}</div></div>`;
             promptInput.value = '';
             document.getElementById('chat-wrapper').scrollTop = document.getElementById('chat-wrapper').scrollHeight;
+            
             const loadingId = 'loading-' + Date.now();
             chatContainer.innerHTML += `<div class="message-row ai" id="${loadingId}"><div class="message-content">⏳ جاري البحث...</div></div>`;
             document.getElementById('chat-wrapper').scrollTop = document.getElementById('chat-wrapper').scrollHeight;
+            
             try {
                 const res = await fetch('/ask', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt, history: session.messages }) });
                 const data = await res.json();
+                
                 document.getElementById(loadingId).remove();
                 session.messages.push({ role: 'assistant', content: data.final });
                 saveSessions();
+                
                 const aiMsgId = 'ai-' + Date.now();
                 chatContainer.innerHTML += `<div class="message-row ai"><div class="message-content" id="${aiMsgId}"></div><button class="speak-btn" onclick="speakText('${data.final.replace(/'/g, "\\'")}')">🔊</button></div>`;
-                await typeWriter(document.getElementById(aiMsgId), data.final, 100); // 100ms
+                
+                await typeWriter(document.getElementById(aiMsgId), data.final, 100);
+                
             } catch (error) {
                 document.getElementById('loadingId').remove();
-                alert('السيرفر لسه بيصحى.');
+                alert('السيرفر لسه بيصحى. استنى شوية وجرب.');
             }
         }
+        
         async function forceUpdate() {
             if ('serviceWorker' in navigator) { const regs = await navigator.serviceWorker.getRegistrations(); for (let r of regs) await r.unregister(); }
             if ('caches' in window) { const names = await caches.keys(); for (let n of names) await caches.delete(n); }
