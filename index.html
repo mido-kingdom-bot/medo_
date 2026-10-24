@@ -19,38 +19,29 @@
         #update-modal h1 { color: var(--neon); margin-bottom: 15px; }
         .update-btn { background: var(--neon); color: #000; border: none; padding: 15px 40px; border-radius: 50px; font-size: 20px; font-weight: bold; cursor: pointer; }
 
-        /* الهيدر */
         .header { display: flex; align-items: center; justify-content: space-between; padding: 15px 20px; background: rgba(5,5,10,0.9); border-bottom: 1px solid var(--border); z-index: 100; backdrop-filter: blur(10px);}
         .header-title .main { font-size: 20px; font-weight: 900; background: linear-gradient(90deg, #fff, var(--neon)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         .action-btn { background: transparent; border: 1px solid var(--border); color: var(--neon); padding: 8px 12px; border-radius: 10px; font-size: 14px; cursor: pointer; }
         
         .chat-wrapper { flex: 1; overflow-y: auto; padding-bottom: 100px; }
         .chat-container { width: 100%; max-width: 820px; margin: 0 auto; padding: 20px; display: flex; flex-direction: column; gap: 20px; }
-        .message-row { display: flex; flex-direction: column; width: 100%; }
+        .message-row { display: flex; flex-direction: column; width: 100%; animation: slideUp 0.3s ease-out; }
         .message-row.user { align-items: flex-start; }
         .message-row.ai { align-items: flex-end; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         
         .message-content { font-size: 15px; line-height: 1.8; padding: 15px 20px; border-radius: 16px; max-width: 95%; word-wrap: break-word; background: var(--glass); border: 1px solid var(--border); }
         .message-row.user .message-content { background: rgba(0,255,204,0.15); border-color: var(--neon); color: #fff; }
         
-        /* 🚨 تنسيق الكلام العادي (بدون مربع) 🚨 */
         .normal-text { margin-bottom: 10px; display: block; }
         .normal-text h3 { color: var(--neon); margin: 15px 0 10px; font-size: 18px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
         .normal-text strong { color: #fff; font-weight: 700; }
         .normal-text ul { padding-right: 20px; margin: 10px 0; }
         .normal-text li { margin-bottom: 8px; color: #ccc; }
 
-        /* 🚨 تنسيق مربع الكود 🚨 */
-        .code-container { position: relative; background: #000; border: 1px solid #333; border-radius: 10px; padding: 40px 15px 15px 15px; margin: 10px 0; overflow-x: auto; direction: ltr; text-align: left; }
-        .code-container pre { margin: 0; color: var(--neon); font-family: monospace; font-size: 14px; white-space: pre-wrap; }
-        .copy-code-btn { position: absolute; top: 8px; right: 8px; background: #222; color: #fff; border: 1px solid #444; padding: 5px 12px; border-radius: 5px; font-size: 12px; cursor: pointer; font-family: 'Cairo', sans-serif; display: flex; align-items: center; gap: 5px;}
-        .copy-code-btn:hover { background: var(--neon); color: #000; }
-
-        /* 🚨 تنسيق مربع اللينك 🚨 */
         .link-container { display: flex; align-items: center; justify-content: space-between; background: #0a0a0f; border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; margin: 8px 0; gap: 10px; }
         .link-text { color: var(--neon); text-decoration: none; font-size: 13px; word-break: break-all; flex: 1; }
         .copy-link-btn { background: rgba(0, 255, 204, 0.1); border: 1px solid var(--neon); color: var(--neon); padding: 5px 12px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 5px; font-family: 'Cairo', sans-serif; white-space: nowrap;}
-        .copy-link-btn:hover { background: var(--neon); color: #000; }
 
         .input-container { position: fixed; bottom: 0; left: 0; right: 0; padding: 15px; background: linear-gradient(180deg, transparent, #000 80%); display: flex; justify-content: center; z-index: 100;}
         .input-box-wrapper { width: 100%; max-width: 820px; display: flex; align-items: center; gap: 8px; background: rgba(20, 25, 35, 0.95); border-radius: 15px; padding: 5px 10px; border: 1px solid var(--border); }
@@ -87,45 +78,20 @@
     </div>
 
     <script>
-        // 🚨 دالة التنسيق الجديدة (كلام عادي، أكواد في مربع، لينكات في مربع) 🚨
         function parseMarkdown(text) {
             if (!text) return '';
             let html = text;
-
-            // 1. الأكواد (في مربع)
-            html = html.replace(/```(?:[a-z]+)?\n?([\s\S]*?)```/g, function(match, code) {
-                return `<div class="code-container">
-                            <button class="copy-code-btn" onclick="copyCode(this)">📋 نسخ</button>
-                            <pre>${code.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
-                        </div>`;
-            });
-
-            // 2. اللينكات (في مربع)
+            // الروابط
             html = html.replace(/\[(.*?)\]\((.*?)\)/g, function(match, title, url) {
-                return `<div class="link-container">
-                            <a href="${url}" target="_blank" class="link-text">🔗 ${title}</a>
-                            <button class="copy-link-btn" onclick="copyLink('${url}')">⧉ نسخ</button>
-                        </div>`;
+                return `<div class="link-container"><a href="${url}" target="_blank" class="link-text">🔗 ${title}</a><button class="copy-link-btn" onclick="copyLink('${url}')">⧉ نسخ</button></div>`;
             });
-
-            // 3. الكلام العادي (نص عادي، مش في مربع)
+            // العناوين والنقط
             html = html.replace(/### (.*?)(?=\n|$)/g, '<h3>$1</h3>');
             html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
             html = html.replace(/^- (.*?)$/gm, '<li>$1</li>');
             html = html.replace(/(<li>.*?<\/li>)/gs, '<ul>$1</ul>');
-            
-            // تحويل السطور لمسافات
             html = html.replace(/\n/g, '<br>');
-
             return `<div class="normal-text">${html}</div>`;
-        }
-
-        function copyCode(btn) {
-            const code = btn.nextElementSibling.innerText;
-            navigator.clipboard.writeText(code).then(() => {
-                btn.innerText = "✅ تم النسخ";
-                setTimeout(() => btn.innerHTML = "📋 نسخ", 2000);
-            });
         }
 
         function copyLink(url) {
@@ -138,23 +104,19 @@
             });
         }
 
-        // 🚨 الكتابة السطر بسطر بسرعة 100ms 🚨
         async function typeWriter(element, text, speed = 100) {
             element.innerHTML = '';
             const lines = text.split('\n');
             let currentText = '';
-            
             for (let i = 0; i < lines.length; i++) {
                 currentText += lines[i] + '\n';
                 element.innerHTML = parseMarkdown(currentText);
                 document.getElementById('chat-wrapper').scrollTop = document.getElementById('chat-wrapper').scrollHeight;
-                // استنى 100ms قبل السطر التالي
                 await new Promise(r => setTimeout(r, speed));
             }
             element.innerHTML = parseMarkdown(text);
         }
 
-        // --- باقي الكود (الشات والصوت) ---
         let sessions = JSON.parse(localStorage.getItem('m.e_sessions')) || [];
         let currentSessionId = localStorage.getItem('m.e_current_session');
         if (sessions.length === 0) { createNewChat(); } else if (!currentSessionId || !sessions.find(s => s.id === currentSessionId)) { currentSessionId = sessions[0].id; }
@@ -175,7 +137,7 @@
                 container.innerHTML = `<div class="message-row ai"><div class="message-content">أهلاً بك يا محمد 👋<br>أنا مساعدك الخارق.</div></div>`;
                 return;
             }
-            session.messages.forEach((msg, index) => {
+            session.messages.forEach((msg) => {
                 let htmlContent = parseMarkdown(msg.content);
                 let speakBtn = msg.role === 'ai' ? `<button class="speak-btn" onclick="speakText('${msg.content.replace(/'/g, "\\'")}')">🔊</button>` : '';
                 container.innerHTML += `<div class="message-row ${msg.role === 'user' ? 'user' : 'ai'}"><div class="message-content">${htmlContent}</div>${speakBtn}</div>`;
@@ -216,7 +178,7 @@
                 saveSessions();
                 const aiMsgId = 'ai-' + Date.now();
                 chatContainer.innerHTML += `<div class="message-row ai"><div class="message-content" id="${aiMsgId}"></div><button class="speak-btn" onclick="speakText('${data.final.replace(/'/g, "\\'")}')">🔊</button></div>`;
-                await typeWriter(document.getElementById(aiMsgId), data.final, 100); // 100ms بين كل سطر
+                await typeWriter(document.getElementById(aiMsgId), data.final, 100); // 100ms
             } catch (error) {
                 document.getElementById('loadingId').remove();
                 alert('السيرفر لسه بيصحى.');
