@@ -1,0 +1,7 @@
+node_modules/
+libs_SecLists/
+libs_PayloadsAllTheThings/
+libs_hacktricks/
+library_data/
+__pycache__/
+.env
